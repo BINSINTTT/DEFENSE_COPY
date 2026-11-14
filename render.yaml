@@ -26,7 +26,7 @@ services:
       - key: ULTRALYTICS_SEVERITY_IMGSZ
         value: "640"
       - key: ULTRALYTICS_SPECIALIST_URL
-        sync: false
+        value: https://predict-6af8c2898f0cdf0a7b3ba2a2-dproatj77a-as.a.run.app/predict
       - key: ULTRALYTICS_SPECIALIST_API_KEY
         sync: false
       - key: ULTRALYTICS_SPECIALIST_CONF

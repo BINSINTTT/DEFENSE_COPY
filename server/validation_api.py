@@ -38,6 +38,7 @@ _RETIRED_SEVERITY_HOSTS = {
     "predict-6af4d8cb3a83009cbe9bd1ba-dproatj77a-de.a.run.app",
 }
 _LIVE_SEVERITY_URL = "https://predict-6af4e3d49f69f7e908215757-dproatj77a-de.a.run.app"
+_LIVE_SPECIALIST_URL = "https://predict-6af8c2898f0cdf0a7b3ba2a2-dproatj77a-as.a.run.app"
 
 
 def _severity_predict_url(raw: str) -> str:
@@ -72,7 +73,9 @@ ULTRALYTICS_SEVERITY_API_KEY = (
 ULTRALYTICS_SEVERITY_CONF = float(os.environ.get("ULTRALYTICS_SEVERITY_CONF", "0.25"))
 ULTRALYTICS_SEVERITY_IOU = float(os.environ.get("ULTRALYTICS_SEVERITY_IOU", "0.5"))
 ULTRALYTICS_SEVERITY_IMGSZ = int(os.environ.get("ULTRALYTICS_SEVERITY_IMGSZ", "640"))
-ULTRALYTICS_SPECIALIST_URL = _predict_url(os.environ.get("ULTRALYTICS_SPECIALIST_URL", ""))
+ULTRALYTICS_SPECIALIST_URL = _predict_url(
+    os.environ.get("ULTRALYTICS_SPECIALIST_URL", _LIVE_SPECIALIST_URL)
+)
 ULTRALYTICS_SPECIALIST_API_KEY = (
     os.environ.get("ULTRALYTICS_SPECIALIST_API_KEY", "").strip() or ULTRALYTICS_API_KEY
 )
