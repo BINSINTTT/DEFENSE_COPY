@@ -168,10 +168,15 @@ Stored under:
 | `isCriticalRemoval` | boolean | Critical / remove-plant flag |
 | `barKey` | string | Class key for the guide |
 | `pct` | number | Related confidence % |
+| `severity` | string | Affected-area band: `Healthy`, `Mild`, `Moderate`, `Severe`, or `Unable to Assess` |
+| `severityPct` | number / null | Symptom extent measured from affected leaf area |
+| `affectedAreaPct` | number / null | Affected leaf area used to select the care plan |
+| `recommendationBasis` | string | `affected_area_severity` for severity-driven plans |
 | `topBarKey` | string | Top disease key when saved |
 | `topPct` | number | Top % when saved |
 | `scores` | map | Score snapshot tied to the guide |
 | `scoresKey` | string | Cache key for the score set |
+| `recommendationKey` | string | Cache key combining diagnosis scores with severity band and affected area |
 | `source` | string | `"groq"` or `"rules"` |
 | `savedAt` | string (ISO) | When the guide was saved |
 | `guides` | array | Optional multi-disease guides |

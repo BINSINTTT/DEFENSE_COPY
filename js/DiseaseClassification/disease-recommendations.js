@@ -8,6 +8,12 @@
     spotted_wilt: "Spotted wilt",
   };
 
+  const UNASSESSABLE_STEPS = [
+    "Retake the scan with one leaf in focus, evenly lit, and filling the frame.",
+    "Check the plant for the listed disease symptoms before starting treatment.",
+    "Use disease-specific treatment only after the affected-area severity can be assessed.",
+  ];
+
   /** Longer titles for the scan highlight card. */
   const HIGHLIGHT_NAMES = {
     healthy: "Healthy",
@@ -119,13 +125,18 @@
     if (normalizeKey(diseaseName).includes("healthy")) {
       return explicit && explicit.toLowerCase() !== "unable to assess" ? explicit : "Healthy";
     }
+    const returnedBand = {
+      mild: "Mild",
+      moderate: "Moderate",
+      severe: "Severe",
+    }[explicit.toLowerCase()];
+    if (returnedBand) return returnedBand;
     if (hasArea) {
       const pct = Number(symptomScorePercent);
       if (pct >= 67) return "Severe";
       if (pct >= 34) return "Moderate";
       if (pct > 0) return "Mild";
     }
-    if (explicit && explicit.toLowerCase() !== "unable to assess") return explicit;
     return "Unable to Assess";
   }
 
@@ -225,14 +236,7 @@
     if (areaEl) areaEl.textContent = highlight.affectedAreaText;
     if (severityEl) {
       const band = highlight.severity;
-      const areaPct = Number(highlight.severityPct);
-      const showArea =
-        band &&
-        band !== "—" &&
-        band !== "Healthy" &&
-        band !== "Unable to Assess" &&
-        Number.isFinite(areaPct);
-      severityEl.textContent = showArea ? `${band} · ${fmtPct(areaPct)}%` : band;
+      severityEl.textContent = band;
       severityEl.classList.remove(
         "scan-highlight__metric-value--healthy",
         "scan-highlight__metric-value--mild",
@@ -262,6 +266,26 @@
         "Apply a copper-based or chlorothalonil fungicide per label directions.",
         "Rotate tomatoes to a new area next season; do not replant in the same spot.",
       ],
+      severitySteps: {
+        Mild: [
+          "Remove and destroy the visibly infected leaves; do not compost them.",
+          "Avoid overhead watering; water at the base in the morning.",
+          "Inspect lower leaves closely and rescan if the affected area increases.",
+        ],
+        Moderate: [
+          "Remove and destroy infected leaves; do not compost them.",
+          "Improve airflow by spacing plants and pruning lower foliage.",
+          "Avoid overhead watering; water at the base in the morning.",
+          "Apply a copper-based or chlorothalonil fungicide per label directions.",
+        ],
+        Severe: [
+          "Remove and destroy heavily infected leaves immediately; do not compost them.",
+          "Apply a copper-based or chlorothalonil fungicide per label directions.",
+          "Improve airflow by spacing plants and pruning lower foliage.",
+          "Avoid overhead watering; water at the base in the morning.",
+          "Inspect nearby tomato plants for lower-leaf symptoms.",
+        ],
+      },
       preventionTips: [
         "Mulch around plants to reduce soil splash onto leaves.",
         "Inspect lower leaves weekly during humid weather.",
@@ -280,6 +304,25 @@
         "Remove weeds near the farm that host thrips and the virus.",
         "Do not replant tomatoes in the same bed without thrips management.",
       ],
+      severitySteps: {
+        Mild: [
+          "Remove and destroy the infected plant to limit virus spread.",
+          "Control thrips with insecticidal soap or approved products; focus on leaf undersides.",
+          "Remove nearby weeds that can host thrips and the virus.",
+        ],
+        Moderate: [
+          "Remove and destroy the infected plant promptly to limit virus spread.",
+          "Control thrips with insecticidal soap or approved products; focus on leaf undersides.",
+          "Remove nearby weeds that can host thrips and the virus.",
+          "Use reflective mulch early in the season to repel thrips.",
+        ],
+        Severe: [
+          "Remove and destroy the infected plant immediately to limit virus spread.",
+          "Control thrips with insecticidal soap or approved products; focus on leaf undersides.",
+          "Remove nearby weeds that can host thrips and the virus.",
+          "Do not replant tomatoes in the same bed without thrips management.",
+        ],
+      },
       preventionTips: [
         "Use TSWV-resistant tomato varieties when available.",
         "Install fine mesh row covers until plants flower, if practical.",
@@ -298,6 +341,25 @@
         "Remove solanaceous weeds (tomato relatives) around the field.",
         "Avoid bringing new plants from unknown sources into the farm.",
       ],
+      severitySteps: {
+        Mild: [
+          "Control whiteflies with yellow sticky traps and approved insecticides.",
+          "Spray leaf undersides where whiteflies feed; repeat as directed.",
+          "Inspect new growth twice weekly and rescan if the affected area increases.",
+        ],
+        Moderate: [
+          "Control whiteflies with yellow sticky traps and approved insecticides.",
+          "Spray leaf undersides where whiteflies feed; repeat as directed.",
+          "Remove solanaceous weeds around the field.",
+          "Inspect nearby plants for curling, yellowing, and whitefly activity.",
+        ],
+        Severe: [
+          "Remove the severely infected plant to protect nearby healthy plants.",
+          "Control whiteflies with yellow sticky traps and approved insecticides.",
+          "Spray leaf undersides where whiteflies feed; repeat as directed.",
+          "Remove solanaceous weeds around the field.",
+        ],
+      },
       preventionTips: [
         "Plant TYLCV-tolerant varieties where the virus is common.",
         "Inspect new growth twice weekly for curling and whitefly activity.",
@@ -366,28 +428,24 @@
 
     const severity = diseaseSeverityLabel(diseaseName, symptomPct, resolved.severityLabel);
     let urgencyNote;
-    let actionSteps = [...base.actionSteps];
-    const isCriticalExtent =
-      !isHealthy && severity !== "Unable to Assess" && Number(symptomPct) >= 100;
+    const actionSteps = [
+      ...(!isHealthy && severity === "Unable to Assess"
+        ? UNASSESSABLE_STEPS
+        : base.severitySteps?.[severity] || base.actionSteps),
+    ];
+    const isCriticalExtent = !isHealthy && severity === "Severe";
 
     if (isHealthy && severity !== "Unable to Assess") {
       urgencyNote = "Keep up regular monitoring to catch problems early.";
     } else if (severity === "Unable to Assess") {
       urgencyNote =
         "Severity could not be measured from this image. Confirm symptoms on the plant before treating; follow disease-specific steps cautiously.";
-    } else if (isCriticalExtent) {
-      urgencyNote =
-        "Critical (severity 100%): remove this leaf immediately and destroy it away from the farm. Do not compost.";
-      actionSteps = [
-        "Remove this leaf immediately; bag it and dispose of it away from healthy plants (do not compost).",
-        ...actionSteps,
-      ];
     } else if (severity === "Severe") {
-      urgencyNote = `Urgent (estimated extent ${fmtPct(symptomPct)}%): start treatment within 24–48 hours.`;
+      urgencyNote = "Severe: follow the urgent care steps now.";
     } else if (severity === "Moderate") {
-      urgencyNote = `Moderate (estimated extent ${fmtPct(symptomPct)}%): treat this week before it spreads.`;
+      urgencyNote = "Moderate: begin the care steps this week.";
     } else if (severity === "Mild") {
-      urgencyNote = `Mild (estimated extent ${fmtPct(symptomPct)}%): monitor closely and treat if symptoms worsen.`;
+      urgencyNote = "Mild: use the early care steps and monitor closely.";
     } else {
       urgencyNote = "Confirm symptoms on the plant before treating.";
     }
@@ -403,6 +461,7 @@
       severityPct: symptomPct,
       affectedAreaPct: resolved.affectedAreaPct,
       confidencePercent: Math.min(100, Math.max(0, Number(confidencePercent) || 0)),
+      recommendationBasis: "affected_area_severity",
     };
   }
 
@@ -423,20 +482,20 @@
   }
 
   function guidesForScores(scores, severityInput) {
-    return findDetectedMatches(scores).map(({ barKey, pct }) => {
-      const resolved = resolveSeverityMeta(scores, severityInput, { barKey, pct });
-      return {
-        ...treatmentForBarKey(
-          barKey,
-          pct,
-          barKey === "healthy"
-            ? { ...resolved, severityLabel: resolved.severityLabel || "Healthy" }
-            : resolved
-        ),
-        barKey,
-        pct,
-      };
-    });
+    const top = findTopDisease(scores);
+    if (!top) return [];
+    const resolved = resolveSeverityMeta(scores, severityInput, top);
+    return [{
+      ...treatmentForBarKey(
+        top.barKey,
+        top.pct,
+        top.barKey === "healthy"
+          ? { ...resolved, severityLabel: resolved.severityLabel || "Healthy" }
+          : resolved
+      ),
+      barKey: top.barKey,
+      pct: top.pct,
+    }];
   }
 
   function isHealthyGuide(guide) {
@@ -446,33 +505,33 @@
   }
 
   function mergeGuidesWithTopOverride(scores, topGuide, severityInput) {
-    const detected = findDetectedMatches(scores);
-    if (!detected.length) return [];
-    return detected.map((match, index) => {
-      const resolved = resolveSeverityMeta(scores, severityInput, match);
-      const builtIn = {
-        ...treatmentForBarKey(
-          match.barKey,
-          match.pct,
-          match.barKey === "healthy"
-            ? { ...resolved, severityLabel: resolved.severityLabel || "Healthy" }
-            : resolved
-        ),
-        barKey: match.barKey,
-        pct: match.pct,
-      };
-      if (index !== 0 || !topGuide || topGuide.error) return builtIn;
-      return {
-        ...builtIn,
-        ...topGuide,
-        barKey: match.barKey,
-        pct: match.pct,
-        diseaseName: topGuide.diseaseName || builtIn.diseaseName,
-        severity: builtIn.severity,
-        severityPct: builtIn.severityPct,
-        confidencePercent: builtIn.confidencePercent,
-      };
-    });
+    const top = findTopDisease(scores);
+    if (!top) return [];
+    const resolved = resolveSeverityMeta(scores, severityInput, top);
+    const builtIn = {
+      ...treatmentForBarKey(
+        top.barKey,
+        top.pct,
+        top.barKey === "healthy"
+          ? { ...resolved, severityLabel: resolved.severityLabel || "Healthy" }
+          : resolved
+      ),
+      barKey: top.barKey,
+      pct: top.pct,
+    };
+    if (!topGuide || topGuide.error) return [builtIn];
+    return [{
+      ...builtIn,
+      ...topGuide,
+      barKey: top.barKey,
+      pct: top.pct,
+      diseaseName: topGuide.diseaseName || builtIn.diseaseName,
+      severity: builtIn.severity,
+      severityPct: builtIn.severityPct,
+      affectedAreaPct: builtIn.affectedAreaPct,
+      confidencePercent: builtIn.confidencePercent,
+      recommendationBasis: "affected_area_severity",
+    }];
   }
 
   function renderList(items, emptyMessage) {
@@ -494,14 +553,12 @@
     if (!guide) return "";
     const isHealthy = isHealthyGuide(guide);
     const stepsTitle = isHealthy ? "What to do" : "Treatment steps";
-    const pct = Number(guide.pct);
-    const hasPct = Number.isFinite(pct) && pct > 0;
-    const eyebrow =
-      total > 1
-        ? `Detected${hasPct ? ` · ${fmtPct(pct)}%` : ""}`
-        : hasPct
-          ? `Match · ${fmtPct(pct)}%`
-          : "";
+    const severity = String(guide.severity || "").trim();
+    const eyebrow = isHealthy
+      ? "Healthy care plan"
+      : severity && severity !== "Unable to Assess"
+        ? `${severity} care plan`
+        : "General care guidance · severity unavailable";
     const urgencyClass = guide.isCriticalRemoval
       ? "scan-treatment-panel__urgency scan-treatment-panel__urgency--critical"
       : "scan-treatment-panel__urgency";
@@ -607,7 +664,12 @@
     }
     if (!guides.length) return;
     renderPanelContent(guides);
-    rememberGuide(activeTileKey, guides, lastScores ? scoresKey(lastScores) : "");
+    rememberGuide(
+      activeTileKey,
+      guides,
+      lastScores ? scoresKey(lastScores) : "",
+      lastScores ? recommendationKey(lastScores, lastSeverityMeta ?? lastSeverityPct) : ""
+    );
   }
 
   function readRecommendationStore() {
@@ -640,10 +702,27 @@
     if (BAR_KEYS.includes(barKey)) record.barKey = barKey;
     const pct = Math.min(100, Math.max(0, Number(guide.pct) || 0));
     if (pct > 0) record.pct = Math.round(pct * 10) / 10;
+    const severity = String(guide.severity || "").trim();
+    if (["Healthy", "Mild", "Moderate", "Severe", "Unable to Assess"].includes(severity)) {
+      record.severity = severity;
+    }
+    const severityPct = guide.severityPct == null ? NaN : Number(guide.severityPct);
+    if (Number.isFinite(severityPct) && severityPct >= 0) {
+      record.severityPct = Math.round(Math.min(100, severityPct) * 10) / 10;
+    }
+    const affectedAreaRaw = guide.affectedAreaPct ?? guide.severityPct;
+    const affectedAreaPct = affectedAreaRaw == null ? NaN : Number(affectedAreaRaw);
+    if (Number.isFinite(affectedAreaPct) && affectedAreaPct >= 0) {
+      record.affectedAreaPct = Math.round(Math.min(100, affectedAreaPct) * 10) / 10;
+    }
+    if (guide.recommendationBasis === "affected_area_severity") {
+      record.recommendationBasis = "affected_area_severity";
+    }
+    if (guide.source === "groq" || guide.source === "rules") record.source = guide.source;
     return record;
   }
 
-  function guideRecord(guideOrGuides, scoresKeyValue) {
+  function guideRecord(guideOrGuides, scoresKeyValue, recommendationKeyValue) {
     const list = Array.isArray(guideOrGuides)
       ? guideOrGuides
       : guideOrGuides?.guides && Array.isArray(guideOrGuides.guides)
@@ -657,6 +736,10 @@
       if (!legacy) return null;
       const key = String(scoresKeyValue || guideOrGuides?.scoresKey || "").trim().slice(0, 200);
       if (key) legacy.scoresKey = key;
+      const recKey = String(
+        recommendationKeyValue || guideOrGuides?.recommendationKey || ""
+      ).trim().slice(0, 280);
+      if (recKey) legacy.recommendationKey = recKey;
       return legacy;
     }
     const primary = { ...guides[0] };
@@ -664,6 +747,13 @@
       scoresKeyValue || guideOrGuides?.scoresKey || (Array.isArray(guideOrGuides) ? "" : guideOrGuides?.scoresKey) || ""
     ).trim().slice(0, 200);
     if (key) primary.scoresKey = key;
+    const recKey = String(
+      recommendationKeyValue ||
+        guideOrGuides?.recommendationKey ||
+        (Array.isArray(guideOrGuides) ? "" : guideOrGuides?.recommendationKey) ||
+        ""
+    ).trim().slice(0, 280);
+    if (recKey) primary.recommendationKey = recKey;
     if (guides.length > 1) primary.guides = guides;
     return primary;
   }
@@ -674,8 +764,6 @@
     if (stored?.guides?.length) {
       return stored.guides.map((guide) => singleGuideRecord(guide)).filter(Boolean);
     }
-    // Older saves only kept the top match — rebuild from scores when more were detected.
-    if (fromScores.length > 1) return fromScores;
     if (stored && (stored.summary || stored.actionSteps?.length)) {
       const one = singleGuideRecord(stored);
       if (one) {
@@ -690,12 +778,13 @@
   function storedGuide(tileId) {
     const id = tileKey(tileId);
     if (!id) return null;
-    return guideRecord(readRecommendationStore()[id]);
+    const stored = readRecommendationStore()[id];
+    return guideRecord(stored, stored?.scoresKey, stored?.recommendationKey);
   }
 
-  function rememberGuide(tileId, guides, key) {
+  function rememberGuide(tileId, guides, scoreKey, recKey) {
     const id = tileKey(tileId);
-    const record = guideRecord(guides, key);
+    const record = guideRecord(guides, scoreKey, recKey);
     if (!id || !record) return;
     const store = readRecommendationStore();
     if (JSON.stringify(store[id]) === JSON.stringify(record)) return;
@@ -716,18 +805,20 @@
   async function captureForSave(tileNum, scores, severityInput) {
     const id = tileKey(tileNum);
     if (!id || !scores) return null;
-    const key = scoresKey(scores);
-    const existing = storedGuide(id);
-    if (existing && existing.scoresKey === key) return existing;
     const top = findTopDisease(scores);
     if (!top) return null;
     const resolved =
       resolveSeverityMeta(scores, severityInput ?? lastSeverityMeta ?? lastSeverityPct, top) ||
       undefined;
+    const scoreKey = scoresKey(scores);
+    const recKey = recommendationKey(scores, resolved);
+    const existing = storedGuide(id);
+    if (existing && existing.recommendationKey === recKey) return existing;
     let topGuide = null;
     const client = window.TomatoInsightGroqClient;
     if (client?.groqEnabled?.() && client.fetchCareRecommendation) {
       const result = await client.fetchCareRecommendation(scores, {
+        affectedAreaPct: resolved?.affectedAreaPct,
         severityPct: resolved?.severityPct,
         severityLabel: resolved?.severityLabel,
       });
@@ -738,7 +829,7 @@
     let guides = mergeGuidesWithTopOverride(scores, topGuide, resolved);
     if (!guides.length && builtInRulesEnabled()) guides = guidesForScores(scores, resolved);
     if (!guides.length) return null;
-    const record = guideRecord(guides, key);
+    const record = guideRecord(guides, scoreKey, recKey);
     if (!record) return null;
     const store = readRecommendationStore();
     store[id] = record;
@@ -752,8 +843,22 @@
     ).join("|");
   }
 
+  function recommendationKey(scores, severityInput) {
+    const top = findTopDisease(scores);
+    const resolved = resolveSeverityMeta(scores, severityInput, top);
+    const severity = String(resolved?.severityLabel || "Unable to Assess").trim();
+    const areaRaw = resolved?.affectedAreaPct ?? resolved?.severityPct;
+    const area = areaRaw == null ? NaN : Number(areaRaw);
+    const areaKey = Number.isFinite(area) && area >= 0 ? String(Math.round(area * 10) / 10) : "na";
+    return `${scoresKey(scores)}|severity:${severity}|affected:${areaKey}`;
+  }
+
   function stillShowing(key, tile) {
-    return isOpenForActiveTile() && activeTileKey === tile && scoresKey(lastScores) === key;
+    return (
+      isOpenForActiveTile() &&
+      activeTileKey === tile &&
+      recommendationKey(lastScores, lastSeverityMeta ?? lastSeverityPct) === key
+    );
   }
 
   async function requestGroqGuide(client, scores, key, severityInput) {
@@ -763,6 +868,7 @@
 
     const request = client
       .fetchCareRecommendation(scores, {
+        affectedAreaPct: resolved?.affectedAreaPct,
         severityPct: resolved?.severityPct,
         severityLabel: resolved?.severityLabel,
       })
@@ -786,10 +892,10 @@
   async function loadGroqPanel(top, scores, severityInput) {
     const client = window.TomatoInsightGroqClient;
     const groqOnly = client?.groqOnlyMode?.();
-    const key = scoresKey(scores);
-    const tile = activeTileKey;
     const resolved =
       resolveSeverityMeta(scores, severityInput ?? lastSeverityMeta ?? lastSeverityPct, top);
+    const key = recommendationKey(scores, resolved);
+    const tile = activeTileKey;
 
     if (guideCache.has(key)) {
       renderPanel(top, mergeGuidesWithTopOverride(scores, guideCache.get(key), resolved));
@@ -847,14 +953,15 @@
     btn.disabled = !enabled;
     const top = lastTop;
     const resolved = resolveSeverityMeta(lastScores, lastSeverityMeta ?? lastSeverityPct, top);
-    const critical = Boolean(
-      top &&
-        top.barKey !== "healthy" &&
-        resolved.severityLabel !== "Unable to Assess" &&
-        Number(resolved.severityPct) >= 100
-    );
-    if (enabled && critical) {
-      btn.textContent = "Urgent: remove leaf — view steps";
+    const severity = String(resolved?.severityLabel || "");
+    if (enabled && top?.barKey !== "healthy" && severity === "Severe") {
+      btn.textContent = "View urgent Severe care plan";
+    } else if (enabled && top?.barKey !== "healthy" && severity === "Moderate") {
+      btn.textContent = "View Moderate care plan";
+    } else if (enabled && top?.barKey !== "healthy" && severity === "Mild") {
+      btn.textContent = "View Mild care plan";
+    } else if (enabled && severity === "Unable to Assess") {
+      btn.textContent = "View general care guidance";
     } else {
       btn.textContent = "View care recommendations";
     }
@@ -867,8 +974,10 @@
     const btn = document.getElementById("scan-treatment-btn");
     btn?.setAttribute("aria-expanded", "true");
     const stored = storedGuide(activeTileKey);
-    const currentKey = lastScores ? scoresKey(lastScores) : "";
-    if (stored && (!stored.scoresKey || !currentKey || stored.scoresKey === currentKey)) {
+    const currentKey = lastScores
+      ? recommendationKey(lastScores, lastSeverityMeta ?? lastSeverityPct)
+      : "";
+    if (stored && stored.recommendationKey && stored.recommendationKey === currentKey) {
       const guides = guidesFromStored(stored, lastScores);
       renderPanel(lastTop, guides.length ? guides : stored);
       return;
@@ -882,8 +991,9 @@
     const nextTile = tileKey(tileNum);
     if (nextTile) activeTileKey = nextTile;
     const nextScores = scores && Object.keys(scores).length ? { ...scores } : null;
-    const nextKey = nextScores ? scoresKey(nextScores) : "";
-    const prevKey = lastScores ? scoresKey(lastScores) : "";
+    const prevKey = lastScores
+      ? recommendationKey(lastScores, lastSeverityMeta ?? lastSeverityPct)
+      : "";
     lastScores = nextScores;
     const topPreview = findTopDisease(nextScores);
     lastSeverityMeta =
@@ -894,6 +1004,9 @@
       lastSeverityMeta?.severityPct != null && Number.isFinite(Number(lastSeverityMeta.severityPct))
         ? Number(lastSeverityMeta.severityPct)
         : null;
+    const nextKey = nextScores
+      ? recommendationKey(nextScores, lastSeverityMeta ?? lastSeverityPct)
+      : "";
     lastDetected = findDetectedMatches(nextScores);
     lastTop = lastDetected[0] || null;
     setButtonEnabled(Boolean(lastTop));
@@ -935,6 +1048,7 @@
     forget: forgetGuide,
     storedForTile: storedGuide,
     scoresKeyFor: scoresKey,
+    recommendationKeyFor: recommendationKey,
     diseaseSeverityLabel,
     highlightForScores,
     renderScanHighlight,

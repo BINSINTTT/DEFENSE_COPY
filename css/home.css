@@ -1433,12 +1433,11 @@
 
 .scan-highlight__metric-value {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: 1.35rem;
   font-weight: 700;
   line-height: 1.2;
   color: #2c2c2c;
   font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
 }
 
 .scan-highlight__metric-hint {
@@ -2164,6 +2163,20 @@
     height: min(92dvh, calc(100dvh - 0.5rem));
     border-radius: 1.15rem 1.15rem 0 0;
     transform: translateY(110%);
+  }
+
+  .scan-upload {
+    flex: 0 0 auto;
+    min-height: 0;
+  }
+
+  .scan-upload__preview {
+    height: auto;
+    max-height: 14rem;
+  }
+
+  .scan-highlight__metrics {
+    gap: 0.5rem;
   }
 
   .tile-drawer--visible .tile-drawer__panel {

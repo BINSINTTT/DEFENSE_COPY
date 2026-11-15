@@ -7,6 +7,7 @@ The result is an image-processing estimate, not a clinically validated score.
 
 from __future__ import annotations
 
+import struct
 from typing import Any
 
 import cv2
@@ -66,11 +67,92 @@ def _result(
     }
 
 
+def _jpeg_orientation(data: bytes) -> int:
+    """Read the EXIF orientation phone cameras store. OpenCV ignores it otherwise."""
+    if len(data) < 4 or data[:2] != b"\xff\xd8":
+        return 1
+    offset = 2
+    while offset + 4 < len(data) and data[offset] == 0xFF:
+        marker = data[offset + 1]
+        if marker in (0xDA, 0xD9):
+            break
+        length = int.from_bytes(data[offset + 2 : offset + 4], "big")
+        if length < 2 or offset + 2 + length > len(data):
+            break
+        if marker == 0xE1:
+            return _orientation_in_exif(data[offset + 4 : offset + 2 + length])
+        offset += 2 + length
+    return 1
+
+
+def _orientation_in_exif(segment: bytes) -> int:
+    if not segment.startswith(b"Exif\x00\x00") or len(segment) < 14:
+        return 1
+    tiff = segment[6:]
+    if tiff.startswith(b"II"):
+        endian = "<"
+    elif tiff.startswith(b"MM"):
+        endian = ">"
+    else:
+        return 1
+    ifd = struct.unpack_from(endian + "I", tiff, 4)[0]
+    if ifd < 0 or ifd + 2 > len(tiff):
+        return 1
+    count = struct.unpack_from(endian + "H", tiff, ifd)[0]
+    for index in range(count):
+        entry = ifd + 2 + index * 12
+        if entry + 12 > len(tiff):
+            break
+        tag, field_type, number = struct.unpack_from(endian + "HHI", tiff, entry)
+        if tag == 0x0112 and field_type == 3 and number >= 1:
+            value = struct.unpack_from(endian + "H", tiff, entry + 8)[0]
+            return value if 1 <= value <= 8 else 1
+    return 1
+
+
+def _apply_orientation(bgr: np.ndarray, orientation: int) -> np.ndarray:
+    if orientation == 2:
+        return cv2.flip(bgr, 1)
+    if orientation == 3:
+        return cv2.rotate(bgr, cv2.ROTATE_180)
+    if orientation == 4:
+        return cv2.flip(bgr, 0)
+    if orientation == 5:
+        return cv2.flip(cv2.rotate(bgr, cv2.ROTATE_90_CLOCKWISE), 1)
+    if orientation == 6:
+        return cv2.rotate(bgr, cv2.ROTATE_90_CLOCKWISE)
+    if orientation == 7:
+        return cv2.flip(cv2.rotate(bgr, cv2.ROTATE_90_COUNTERCLOCKWISE), 1)
+    if orientation == 8:
+        return cv2.rotate(bgr, cv2.ROTATE_90_COUNTERCLOCKWISE)
+    return bgr
+
+
+def _limit_long_edge(bgr: np.ndarray, max_edge: int = 1600) -> np.ndarray:
+    height, width = bgr.shape[:2]
+    edge = max(height, width)
+    if edge <= max_edge:
+        return bgr
+    scale = max_edge / float(edge)
+    return cv2.resize(
+        bgr,
+        (max(1, int(round(width * scale))), max(1, int(round(height * scale)))),
+        interpolation=cv2.INTER_AREA,
+    )
+
+
 def decode_image(image_bytes: bytes) -> np.ndarray | None:
     if not image_bytes:
         return None
     array = np.frombuffer(image_bytes, dtype=np.uint8)
-    return cv2.imdecode(array, cv2.IMREAD_COLOR)
+    bgr = cv2.imdecode(array, cv2.IMREAD_COLOR)
+    if bgr is None:
+        return None
+    # Phone cameras store the picture sideways and at several megapixels.
+    # Turn it upright and limit the size so the same area measurement used
+    # for a desktop upload also finishes for a mobile photo.
+    bgr = _apply_orientation(bgr, _jpeg_orientation(image_bytes))
+    return _limit_long_edge(bgr)
 
 
 def _largest_component(mask: np.ndarray) -> np.ndarray:

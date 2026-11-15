@@ -466,8 +466,8 @@
       if (!treatmentPanel || !top) return;
       const recs = window.TomatoInsightRecommendations;
       const stored = recs?.storedForTile?.(tileNum);
-      const key = scores ? recs?.scoresKeyFor?.(scores) : "";
-      const storedMatches = stored && (!stored.scoresKey || !key || stored.scoresKey === key);
+      const key = scores ? recs?.recommendationKeyFor?.(scores, severityPct) : "";
+      const storedMatches = stored && stored.recommendationKey && stored.recommendationKey === key;
       let guides = storedMatches ? recs?.guidesFromStored?.(stored, scores) : null;
       if (!guides?.length) guides = scores ? recs?.guidesForScores?.(scores, severityPct) : null;
       if (!guides?.length && recs?.treatmentForBarKey) {
@@ -504,10 +504,17 @@
       treatmentBtn.disabled = false;
       treatmentBtn.setAttribute("aria-expanded", "false");
       const highlight = window.TomatoInsightRecommendations?.highlightForScores?.(scores, severityPct);
-      const isCritical = Boolean(top.barKey !== "healthy" && Number(highlight?.severityPct) >= 100);
-      treatmentBtn.textContent = isCritical
-        ? "Urgent: remove leaf — view steps"
-        : "View care recommendations";
+      const severity = String(highlight?.severity || "");
+      treatmentBtn.textContent =
+        top.barKey !== "healthy" && severity === "Severe"
+          ? "View urgent Severe care plan"
+          : top.barKey !== "healthy" && severity === "Moderate"
+            ? "View Moderate care plan"
+            : top.barKey !== "healthy" && severity === "Mild"
+              ? "View Mild care plan"
+              : severity === "Unable to Assess"
+                ? "View general care guidance"
+                : "View care recommendations";
       renderTreatmentPanel(top, tileNum, scores, severityPct);
       if (treatmentPanel) treatmentPanel.hidden = true;
     }

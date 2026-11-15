@@ -891,11 +891,58 @@
     saveBtn.disabled = Boolean(loading || !hasImage);
   }
 
+  function isProbableImage(file) {
+    if (!file) return false;
+    if (typeof file.type === "string" && file.type.startsWith("image/")) return true;
+    return /\.(jpe?g|png|webp|gif|bmp|heic|heif)$/i.test(file.name || "");
+  }
+
+  function normalizeScanFile(file) {
+    const maxEdge = 1600;
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const image = new Image();
+      image.onload = () => {
+        const longest = Math.max(image.naturalWidth, image.naturalHeight) || 1;
+        const scale = Math.min(1, maxEdge / longest);
+        const width = Math.max(1, Math.round(image.naturalWidth * scale));
+        const height = Math.max(1, Math.round(image.naturalHeight * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext("2d");
+        if (!context) {
+          URL.revokeObjectURL(url);
+          reject(new Error("This photo could not be prepared."));
+          return;
+        }
+        context.drawImage(image, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            URL.revokeObjectURL(url);
+            if (!blob) {
+              reject(new Error("This photo could not be prepared."));
+              return;
+            }
+            resolve(new File([blob], "scan.jpg", { type: "image/jpeg", lastModified: Date.now() }));
+          },
+          "image/jpeg",
+          0.92
+        );
+      };
+      image.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("This photo could not be read. Use a JPG or PNG."));
+      };
+      image.src = url;
+    });
+  }
+
   function showScanPreview(file, tileNum) {
     const zone = document.getElementById("scan-upload-zone");
     const preview = document.getElementById("scan-upload-preview");
     const placeholder = document.getElementById("scan-upload-placeholder");
-    if (!file?.type?.startsWith("image/")) return;
+    if (!isProbableImage(file)) return;
 
     const reader = new FileReader();
     reader.onload = () => {
@@ -937,11 +984,22 @@
   }
 
   async function handleScanImageFile(file) {
-    if (!file?.type?.startsWith("image/")) return;
+    if (!isProbableImage(file)) return;
+    let prepared = file;
+    try {
+      prepared = await normalizeScanFile(file);
+    } catch (err) {
+      showScanNotice(
+        "error",
+        "Photo not supported",
+        err?.message || "This photo could not be read. Use a JPG or PNG."
+      );
+      return;
+    }
     pendingScanTile = activeTileNum;
     beginScanPipeline(activeTileNum);
-    showScanPreview(file, activeTileNum);
-    window.TomatoInsightValidation?.validateImageFile?.(file);
+    showScanPreview(prepared, activeTileNum);
+    window.TomatoInsightValidation?.validateImageFile?.(prepared);
   }
 
   function initScanUpload() {

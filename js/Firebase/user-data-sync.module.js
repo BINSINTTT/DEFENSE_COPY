@@ -539,6 +539,24 @@ function singleRecommendationGuide(value) {
   if (SCORE_KEYS.includes(barKey)) record.barKey = barKey;
   const pct = Math.round(Math.min(100, Math.max(0, Number(value.pct ?? value.topPct) || 0)) * 10) / 10;
   if (pct > 0) record.pct = pct;
+  const severity = String(value.severity || value.severityLabel || "").trim();
+  if (["Healthy", "Mild", "Moderate", "Severe", "Unable to Assess"].includes(severity)) {
+    record.severity = severity;
+  }
+  const severityRaw = value.severityPct ?? value.affectedAreaPct;
+  const severityPct = severityRaw == null ? NaN : Number(severityRaw);
+  if (Number.isFinite(severityPct) && severityPct >= 0) {
+    record.severityPct = roundScore(severityPct);
+  }
+  const areaRaw = value.affectedAreaPct ?? value.severityPct;
+  const affectedAreaPct = areaRaw == null ? NaN : Number(areaRaw);
+  if (Number.isFinite(affectedAreaPct) && affectedAreaPct >= 0) {
+    record.affectedAreaPct = roundScore(affectedAreaPct);
+  }
+  if (value.recommendationBasis === "affected_area_severity") {
+    record.recommendationBasis = "affected_area_severity";
+  }
+  if (value.source === "groq" || value.source === "rules") record.source = value.source;
   return record;
 }
 
@@ -548,6 +566,8 @@ function recommendationRecord(value) {
   if (!record) return null;
   const scoresKey = String(value.scoresKey || "").trim().slice(0, 200);
   if (scoresKey) record.scoresKey = scoresKey;
+  const recommendationKey = String(value.recommendationKey || "").trim().slice(0, 280);
+  if (recommendationKey) record.recommendationKey = recommendationKey;
   const topBarKey = String(value.topBarKey || value.barKey || "").trim();
   if (SCORE_KEYS.includes(topBarKey)) record.topBarKey = topBarKey;
   const topPct = Math.round(Math.min(100, Math.max(0, Number(value.topPct ?? value.pct) || 0)) * 10) / 10;

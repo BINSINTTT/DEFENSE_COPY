@@ -18,6 +18,12 @@ DEFAULT_MODEL = "openai/gpt-oss-20b"
 
 BAR_KEYS = ("healthy", "tlcv", "early_blight", "spotted_wilt")
 
+UNASSESSABLE_STEPS = [
+    "Retake the scan with one leaf in focus, evenly lit, and filling the frame.",
+    "Check the plant for the listed disease symptoms before starting treatment.",
+    "Use disease-specific treatment only after the affected-area severity can be assessed.",
+]
+
 DISPLAY_NAMES = {
     "healthy": "Healthy",
     "tlcv": "Yellow leaf curl virus",
@@ -38,6 +44,26 @@ DISEASE_FACTS: dict[str, dict[str, Any]] = {
             "Apply a copper-based or chlorothalonil fungicide per label directions.",
             "Rotate tomatoes to a new area next season; do not replant in the same spot.",
         ],
+        "severity_steps": {
+            "Mild": [
+                "Remove and destroy the visibly infected leaves; do not compost them.",
+                "Avoid overhead watering; water at the base in the morning.",
+                "Inspect lower leaves closely and rescan if the affected area increases.",
+            ],
+            "Moderate": [
+                "Remove and destroy infected leaves; do not compost them.",
+                "Improve airflow by spacing plants and pruning lower foliage.",
+                "Avoid overhead watering; water at the base in the morning.",
+                "Apply a copper-based or chlorothalonil fungicide per label directions.",
+            ],
+            "Severe": [
+                "Remove and destroy heavily infected leaves immediately; do not compost them.",
+                "Apply a copper-based or chlorothalonil fungicide per label directions.",
+                "Improve airflow by spacing plants and pruning lower foliage.",
+                "Avoid overhead watering; water at the base in the morning.",
+                "Inspect nearby tomato plants for lower-leaf symptoms.",
+            ],
+        },
         "prevention_tips": [
             "Mulch around plants to reduce soil splash onto leaves.",
             "Inspect lower leaves weekly during humid weather.",
@@ -55,6 +81,25 @@ DISEASE_FACTS: dict[str, dict[str, Any]] = {
             "Remove weeds near the farm that host thrips and the virus.",
             "Do not replant tomatoes in the same bed without thrips management.",
         ],
+        "severity_steps": {
+            "Mild": [
+                "Remove and destroy the infected plant to limit virus spread.",
+                "Control thrips with insecticidal soap or approved products; focus on leaf undersides.",
+                "Remove nearby weeds that can host thrips and the virus.",
+            ],
+            "Moderate": [
+                "Remove and destroy the infected plant promptly to limit virus spread.",
+                "Control thrips with insecticidal soap or approved products; focus on leaf undersides.",
+                "Remove nearby weeds that can host thrips and the virus.",
+                "Use reflective mulch early in the season to repel thrips.",
+            ],
+            "Severe": [
+                "Remove and destroy the infected plant immediately to limit virus spread.",
+                "Control thrips with insecticidal soap or approved products; focus on leaf undersides.",
+                "Remove nearby weeds that can host thrips and the virus.",
+                "Do not replant tomatoes in the same bed without thrips management.",
+            ],
+        },
         "prevention_tips": [
             "Use TSWV-resistant tomato varieties when available.",
             "Install fine mesh row covers until plants flower, if practical.",
@@ -72,6 +117,25 @@ DISEASE_FACTS: dict[str, dict[str, Any]] = {
             "Remove solanaceous weeds (tomato relatives) around the field.",
             "Avoid bringing new plants from unknown sources into the farm.",
         ],
+        "severity_steps": {
+            "Mild": [
+                "Control whiteflies with yellow sticky traps and approved insecticides.",
+                "Spray leaf undersides where whiteflies feed; repeat as directed.",
+                "Inspect new growth twice weekly and rescan if the affected area increases.",
+            ],
+            "Moderate": [
+                "Control whiteflies with yellow sticky traps and approved insecticides.",
+                "Spray leaf undersides where whiteflies feed; repeat as directed.",
+                "Remove solanaceous weeds around the field.",
+                "Inspect nearby plants for curling, yellowing, and whitefly activity.",
+            ],
+            "Severe": [
+                "Remove the severely infected plant to protect nearby healthy plants.",
+                "Control whiteflies with yellow sticky traps and approved insecticides.",
+                "Spray leaf undersides where whiteflies feed; repeat as directed.",
+                "Remove solanaceous weeds around the field.",
+            ],
+        },
         "prevention_tips": [
             "Plant TYLCV-tolerant varieties where the virus is common.",
             "Inspect new growth twice weekly for curling and whitefly activity.",
@@ -143,19 +207,20 @@ def _find_top(scores: dict[str, float]) -> dict[str, Any] | None:
 
 
 def _severity_label(bar_key: str, symptom_pct: float | None, severity_label: str | None = None) -> str:
-    """Use an explicit image-assessment label; never invent one from AI confidence."""
-    if severity_label:
-        return str(severity_label)
+    """Resolve the affected-area band without consulting classifier confidence."""
     if bar_key == "healthy":
         return "Healthy"
-    if symptom_pct is None:
-        return "Unable to Assess"
-    if symptom_pct >= 67:
-        return "Severe"
-    if symptom_pct >= 34:
-        return "Moderate"
-    if symptom_pct > 0:
-        return "Mild"
+    normalized = str(severity_label or "").strip().lower()
+    bands = {"mild": "Mild", "moderate": "Moderate", "severe": "Severe"}
+    if normalized in bands:
+        return bands[normalized]
+    if symptom_pct is not None:
+        if symptom_pct >= 67:
+            return "Severe"
+        if symptom_pct >= 34:
+            return "Moderate"
+        if symptom_pct > 0:
+            return "Mild"
     return "Unable to Assess"
 
 
@@ -170,7 +235,7 @@ def _resolve_severity_pct(
         if severity_label and severity_label != "Healthy":
             return None if severity_pct is None else min(100.0, float(severity_pct))
         return 0.0 if severity_pct is None else min(100.0, max(0.0, float(severity_pct)))
-    if severity_label == "Unable to Assess":
+    if str(severity_label or "").strip().lower() == "unable to assess":
         return None
     if severity_pct is not None and severity_pct >= 0:
         return min(100.0, float(severity_pct))
@@ -208,8 +273,8 @@ def _build_user_message(
             "Use trusted_facts as the source of truth; do not invent new chemicals, doses, or products.",
             "confidence_percent is AI certainty about the disease name only; never treat it as severity.",
             "severity_band comes from a separate image symptom assessment (or Unable to Assess).",
-            "If margin_over_second is under 15 and top is not healthy, mention uncertainty and suggest rescanning.",
-            "If symptom_severity_percent is 100 and top is not healthy, set isCriticalRemoval true and prioritize immediate leaf removal.",
+            "Classification scores select the disease identity only. Never use them to select, scale, order, or word treatment actions.",
+            "Select urgency and care actions only from severity_band and symptom_severity_percent.",
             "If severity_band is Unable to Assess, give cautious general guidance without inventing an extent percentage.",
             "Keep actionSteps ordered and practical for a smallholder tomato farm.",
         ],
@@ -228,7 +293,9 @@ Respond with ONLY valid JSON (no markdown fences) matching this schema:
   "preventionTips": string[],
   "isCriticalRemoval": boolean
 }
-Do not contradict trusted_facts; you may rephrase and prioritize steps based on severity_band and scores.
+Classification scores identify the disease only. Base urgency and care actions exclusively on
+severity_band and symptom_severity_percent. Do not let confidence change the recommendation.
+Do not contradict trusted_facts.
 Do not mention extension services or extension offices."""
 
 
@@ -241,16 +308,10 @@ def _extract_json_object(text: str) -> dict[str, Any]:
 
 
 def _normalize_guide(
-    data: dict[str, Any], bar_key: str, symptom_pct: float | None
+    data: dict[str, Any], bar_key: str, symptom_pct: float | None, severity_label: str
 ) -> dict[str, Any]:
     facts = DISEASE_FACTS.get(bar_key, DISEASE_FACTS["healthy"])
-    disease_name = str(data.get("diseaseName") or DISPLAY_NAMES.get(bar_key, bar_key)).strip()
-
-    action_steps = data.get("actionSteps") or data.get("action_steps")
-    if not isinstance(action_steps, list) or not action_steps:
-        action_steps = list(facts["action_steps"])
-    else:
-        action_steps = [str(s).strip() for s in action_steps if str(s).strip()]
+    severity_guide = _fallback_guide(bar_key, 0.0, symptom_pct, severity_label)
 
     prevention = data.get("preventionTips") or data.get("prevention_tips")
     if not isinstance(prevention, list):
@@ -258,18 +319,17 @@ def _normalize_guide(
     else:
         prevention = [str(s).strip() for s in prevention if str(s).strip()]
 
-    is_critical = bool(data.get("isCriticalRemoval"))
-    if bar_key != "healthy" and symptom_pct is not None and symptom_pct >= 100:
-        is_critical = True
-
     return {
-        "diseaseName": disease_name,
-        "urgencyNote": str(data.get("urgencyNote") or "").strip()
-        or "Guidance only — verify on the plant before treating.",
+        "diseaseName": DISPLAY_NAMES.get(bar_key, bar_key),
+        "urgencyNote": severity_guide["urgencyNote"],
         "summary": str(data.get("summary") or facts["summary"]).strip(),
-        "actionSteps": action_steps,
+        "actionSteps": severity_guide["actionSteps"],
         "preventionTips": prevention,
-        "isCriticalRemoval": is_critical,
+        "isCriticalRemoval": severity_guide["isCriticalRemoval"],
+        "severity": severity_guide["severity"],
+        "severityPct": severity_guide["severityPct"],
+        "affectedAreaPct": severity_guide["affectedAreaPct"],
+        "recommendationBasis": "affected_area_severity",
         "source": "groq",
     }
 
@@ -283,13 +343,14 @@ def _fallback_guide(
     facts = DISEASE_FACTS.get(bar_key, DISEASE_FACTS["healthy"])
     is_healthy = bar_key == "healthy"
     severity = _severity_label(bar_key, symptom_pct, severity_label)
-    action_steps = list(facts["action_steps"])
-    is_critical = (
-        not is_healthy
-        and symptom_pct is not None
-        and symptom_pct >= 100
-        and severity != "Unable to Assess"
+    severity_steps = facts.get("severity_steps") or {}
+    action_steps = (
+        list(UNASSESSABLE_STEPS)
+        if not is_healthy and severity == "Unable to Assess"
+        else list(severity_steps.get(severity) or facts["action_steps"])
     )
+    is_critical = not is_healthy and severity == "Severe"
+    extent = f" · {_format_pct(symptom_pct)}% affected" if symptom_pct is not None else ""
 
     if is_healthy:
         urgency = "Keep up regular monitoring to catch problems early."
@@ -298,21 +359,12 @@ def _fallback_guide(
             "Severity could not be measured from this image. Confirm symptoms on the plant "
             "before treating; follow disease-specific steps cautiously."
         )
-    elif is_critical:
-        urgency = (
-            "Critical (severity 100%): remove this leaf immediately and destroy it away from the farm. "
-            "Do not compost."
-        )
-        action_steps = [
-            "Remove this leaf immediately; bag it and dispose of it away from healthy plants (do not compost).",
-            *action_steps,
-        ]
     elif severity == "Severe":
-        urgency = f"Urgent (severity {_format_pct(symptom_pct or 0)}%): start treatment within 24–48 hours."
+        urgency = f"Severe{extent}: follow the urgent care steps now."
     elif severity == "Moderate":
-        urgency = f"Moderate (severity {_format_pct(symptom_pct or 0)}%): treat this week before it spreads."
+        urgency = f"Moderate{extent}: begin the care steps this week."
     else:
-        urgency = f"Mild (severity {_format_pct(symptom_pct or 0)}%): monitor closely and treat if symptoms worsen."
+        urgency = f"Mild{extent}: use the early care steps and monitor closely."
 
     return {
         "diseaseName": DISPLAY_NAMES.get(bar_key, bar_key),
@@ -321,6 +373,10 @@ def _fallback_guide(
         "actionSteps": action_steps,
         "preventionTips": list(facts.get("prevention_tips") or []),
         "isCriticalRemoval": is_critical,
+        "severity": severity,
+        "severityPct": symptom_pct,
+        "affectedAreaPct": symptom_pct,
+        "recommendationBasis": "affected_area_severity",
         "source": "rules",
     }
 
@@ -425,7 +481,7 @@ def fetch_care_recommendation(
         payload = response.json()
         content = payload["choices"][0]["message"]["content"]
         parsed = _extract_json_object(content)
-        guide = _normalize_guide(parsed, bar_key, symptom_pct if symptom_pct is not None else 0.0)
+        guide = _normalize_guide(parsed, bar_key, symptom_pct, label)
     except (KeyError, IndexError, json.JSONDecodeError, TypeError) as exc:
         guide = _fallback_guide(bar_key, pct, symptom_pct, label)
         return {

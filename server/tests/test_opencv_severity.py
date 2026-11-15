@@ -13,7 +13,14 @@ SERVER_DIR = Path(__file__).resolve().parents[1]
 if str(SERVER_DIR) not in sys.path:
     sys.path.insert(0, str(SERVER_DIR))
 
-from severity.assess import assess_severity, decode_image, segment_leaf  # noqa: E402
+from severity.assess import (  # noqa: E402
+    _apply_orientation,
+    _jpeg_orientation,
+    _limit_long_edge,
+    assess_severity,
+    decode_image,
+    segment_leaf,
+)
 from severity.thresholds import band_for_affected_pct  # noqa: E402
 
 
@@ -82,6 +89,20 @@ def test_invalid_disease_is_rejected():
     result = assess_severity(_leaf_image(), "potato_blight")
     assert result["ok"] is False
     assert result["reason"] == "invalid_disease"
+
+
+def test_phone_photo_is_turned_upright_and_limited():
+    wide = np.zeros((40, 90, 3), dtype=np.uint8)
+    wide[:, :30] = (40, 160, 40)
+    upright = _apply_orientation(wide, 6)
+    assert upright.shape[0] == 90
+    assert upright.shape[1] == 40
+
+    large = np.full((1800, 900, 3), (40, 160, 40), dtype=np.uint8)
+    limited = _limit_long_edge(large, 1600)
+    assert max(limited.shape[:2]) == 1600
+
+    assert _jpeg_orientation(b"\xff\xd8\xff\xd9") == 1
 
 
 def test_bands_remain_compatible_with_the_interface():

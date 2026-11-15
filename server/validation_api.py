@@ -237,7 +237,10 @@ def recommend():
             }
         ), 400
 
-    severity_raw = body.get("severity_pct", body.get("severityPct"))
+    severity_raw = body.get(
+        "affected_area_pct",
+        body.get("affectedAreaPct", body.get("severity_pct", body.get("severityPct"))),
+    )
     try:
         severity_pct = float(severity_raw) if severity_raw is not None and severity_raw != "" else None
     except (TypeError, ValueError):
