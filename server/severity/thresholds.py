@@ -17,7 +17,9 @@ MODERATE_MAX = 66.0
 
 # Leaf segmentation quality gates (fraction of image pixels / contour heuristics).
 MIN_LEAF_AREA_FRACTION = 0.05
-MAX_LEAF_AREA_FRACTION = 0.92
+# Close-up mobile scans often fill nearly the full frame. The upstream tomato
+# leaf validator already rejects non-leaf uploads, so allow tight crops here.
+MAX_LEAF_AREA_FRACTION = 1.0
 MIN_LEAF_SOLIDITY = 0.35
 MIN_LEAF_CONTOUR_AREA = 500
 

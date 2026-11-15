@@ -15,16 +15,6 @@ services:
         sync: false
       - key: ULTRALYTICS_API_KEY
         sync: false
-      - key: ULTRALYTICS_SEVERITY_URL
-        value: https://predict-6af4e3d49f69f7e908215757-dproatj77a-de.a.run.app/predict
-      - key: ULTRALYTICS_SEVERITY_API_KEY
-        sync: false
-      - key: ULTRALYTICS_SEVERITY_CONF
-        value: "0.25"
-      - key: ULTRALYTICS_SEVERITY_IOU
-        value: "0.5"
-      - key: ULTRALYTICS_SEVERITY_IMGSZ
-        value: "640"
       - key: ULTRALYTICS_SPECIALIST_URL
         value: https://predict-6af8c2898f0cdf0a7b3ba2a2-dproatj77a-as.a.run.app/predict
       - key: ULTRALYTICS_SPECIALIST_API_KEY

@@ -1,5 +1,5 @@
 """
-Local proxy for Ultralytics validation, classification, and severity segmentation.
+Local proxy for Ultralytics validation/classification and OpenCV severity.
 Run: python validation_api.py
 Then open the site via http://127.0.0.1:8765/.
 """
@@ -16,7 +16,7 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 from groq.recommendations import fetch_care_recommendation, groq_is_configured
-from severity.ultralytics_segmentation import assess_with_ultralytics_segmentation
+from severity.assess import assess_severity
 from specialist.ultralytics_segmentation import refine_with_ultralytics_segmentation
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -32,21 +32,7 @@ def _predict_url(raw: str) -> str:
     return url
 
 
-# This deployment was removed. Render still injects it through ULTRALYTICS_SEVERITY_URL,
-# which made every severity request 404 and the scan card stay on "Unable to Assess".
-_RETIRED_SEVERITY_HOSTS = {
-    "predict-6af4d8cb3a83009cbe9bd1ba-dproatj77a-de.a.run.app",
-}
-_LIVE_SEVERITY_URL = "https://predict-6af4e3d49f69f7e908215757-dproatj77a-de.a.run.app"
 _LIVE_SPECIALIST_URL = "https://predict-6af8c2898f0cdf0a7b3ba2a2-dproatj77a-as.a.run.app"
-
-
-def _severity_predict_url(raw: str) -> str:
-    url = _predict_url(raw)
-    host = url.split("://", 1)[-1].split("/", 1)[0].lower()
-    if not url or host in _RETIRED_SEVERITY_HOSTS:
-        return _predict_url(_LIVE_SEVERITY_URL)
-    return url
 
 
 PORT = int(os.environ.get("VALIDATION_API_PORT", "8765"))
@@ -64,15 +50,6 @@ ULTRALYTICS_VALIDATION_URL = _predict_url(
 ULTRALYTICS_VALIDATION_API_KEY = (
     os.environ.get("ULTRALYTICS_VALIDATION_API_KEY", "").strip() or ULTRALYTICS_API_KEY
 )
-ULTRALYTICS_SEVERITY_URL = _severity_predict_url(
-    os.environ.get("ULTRALYTICS_SEVERITY_URL", _LIVE_SEVERITY_URL)
-)
-ULTRALYTICS_SEVERITY_API_KEY = (
-    os.environ.get("ULTRALYTICS_SEVERITY_API_KEY", "").strip() or ULTRALYTICS_API_KEY
-)
-ULTRALYTICS_SEVERITY_CONF = float(os.environ.get("ULTRALYTICS_SEVERITY_CONF", "0.25"))
-ULTRALYTICS_SEVERITY_IOU = float(os.environ.get("ULTRALYTICS_SEVERITY_IOU", "0.5"))
-ULTRALYTICS_SEVERITY_IMGSZ = int(os.environ.get("ULTRALYTICS_SEVERITY_IMGSZ", "640"))
 ULTRALYTICS_SPECIALIST_URL = _predict_url(
     os.environ.get("ULTRALYTICS_SPECIALIST_URL", _LIVE_SPECIALIST_URL)
 )
@@ -103,9 +80,9 @@ def health():
             "validation_url": ULTRALYTICS_VALIDATION_URL,
             "validation_configured": bool(ULTRALYTICS_VALIDATION_URL and ULTRALYTICS_VALIDATION_API_KEY),
             "ultralytics_configured": bool(ULTRALYTICS_PREDICT_URL and ULTRALYTICS_API_KEY),
-            "severity_model": "ultralytics_segmentation",
-            "severity_url": ULTRALYTICS_SEVERITY_URL,
-            "severity_configured": bool(ULTRALYTICS_SEVERITY_URL and ULTRALYTICS_SEVERITY_API_KEY),
+            "severity_model": "opencv_color_segmentation",
+            "severity_url": None,
+            "severity_configured": True,
             "specialist_model": "early_blight_spotted_wilt_segmentation",
             "specialist_url": ULTRALYTICS_SPECIALIST_URL,
             "specialist_configured": bool(
@@ -188,12 +165,11 @@ def classify():
 @app.route("/assess-severity", methods=["POST"])
 def assess_severity_route():
     """
-    Measure symptom extent with the trained Ultralytics segmentation model.
+    Measure visible symptom extent with OpenCV color segmentation.
 
-    Classification identifies the disease only. Severity is computed from the
-    matching symptom-mask area divided by leaf-mask area. Multipart fields:
-    file + disease|bar_key. Classification confidence is never converted into
-    severity.
+    Classification identifies the disease only. OpenCV computes symptom pixels
+    divided by leaf pixels. Multipart: file + disease|bar_key. Classification
+    confidence is never converted into severity.
     """
     uploaded = request.files.get("file")
     if uploaded is None or uploaded.filename == "":
@@ -210,17 +186,8 @@ def assess_severity_route():
         or ""
     ).strip()
 
-    result = assess_with_ultralytics_segmentation(
-        image_bytes,
-        uploaded.content_type,
-        disease,
-        ULTRALYTICS_SEVERITY_URL,
-        ULTRALYTICS_SEVERITY_API_KEY,
-        conf=ULTRALYTICS_SEVERITY_CONF,
-        iou=ULTRALYTICS_SEVERITY_IOU,
-        imgsz=ULTRALYTICS_SEVERITY_IMGSZ,
-    )
-    status = 200 if result.get("ok") else 502 if result.get("error") == "upstream" else 500
+    result = assess_severity(image_bytes, disease)
+    status = 200 if result.get("ok") else 400
     return jsonify(result), status
 
 
