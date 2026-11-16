@@ -568,6 +568,35 @@
     </div>
 
     <div
+      class="scan-leaf-reminder"
+      id="scan-leaf-reminder"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="scan-leaf-reminder-title"
+      aria-describedby="scan-leaf-reminder-message"
+      hidden
+    >
+      <div class="scan-leaf-reminder__backdrop" data-cancel-scan-reminder tabindex="-1"></div>
+      <div class="scan-leaf-reminder__panel">
+        <h2 class="scan-leaf-reminder__title" id="scan-leaf-reminder-title">One leaf per photo</h2>
+        <p class="scan-leaf-reminder__message" id="scan-leaf-reminder-message">
+          The scan is most accurate when only one tomato leaf is visible. Extra leaves in the same
+          photo can mix their symptoms and make the result less reliable.
+        </p>
+        <ul class="scan-leaf-reminder__tips">
+          <li>Photograph a single tomato leaf</li>
+          <li>Fill the frame and use bright, even light</li>
+        </ul>
+        <div class="scan-leaf-reminder__actions">
+          <button type="button" class="btn btn--ghost" data-cancel-scan-reminder>Cancel</button>
+          <button type="button" class="btn btn--primary" id="scan-leaf-reminder-continue">
+            Continue to upload
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
       class="tile-delete-confirm"
       id="tile-delete-confirm"
       role="alertdialog"

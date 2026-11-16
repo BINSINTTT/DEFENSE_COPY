@@ -28,6 +28,8 @@
   let activeSeverityPct = null;
   let activeSeverityMeta = null;
   let pendingScanTile = null;
+  /** File already chosen by drag-and-drop, waiting on the one-leaf reminder. */
+  let pendingReminderFile = null;
   /** Tile number while validation + classification is still running for an upload. */
   let scanInFlightTile = null;
   let suppressDraft = false;
@@ -1002,6 +1004,46 @@
     window.TomatoInsightValidation?.validateImageFile?.(prepared);
   }
 
+  function openScanLeafReminder(file) {
+    const dialog = document.getElementById("scan-leaf-reminder");
+    const continueBtn = document.getElementById("scan-leaf-reminder-continue");
+    if (!dialog) {
+      if (file) handleScanImageFile(file);
+      else document.getElementById("scan-upload-input")?.click();
+      return;
+    }
+    pendingReminderFile = file || null;
+    if (continueBtn) continueBtn.textContent = file ? "Scan this photo" : "Continue to upload";
+    dialog.hidden = false;
+    continueBtn?.focus();
+  }
+
+  function closeScanLeafReminder() {
+    const dialog = document.getElementById("scan-leaf-reminder");
+    pendingReminderFile = null;
+    if (dialog) dialog.hidden = true;
+  }
+
+  function confirmScanLeafReminder() {
+    const file = pendingReminderFile;
+    const input = document.getElementById("scan-upload-input");
+    closeScanLeafReminder();
+    if (file) {
+      handleScanImageFile(file);
+      return;
+    }
+    input?.click();
+  }
+
+  function initScanLeafReminder() {
+    const dialog = document.getElementById("scan-leaf-reminder");
+    if (!dialog) return;
+    dialog.querySelectorAll("[data-cancel-scan-reminder]").forEach((el) => {
+      el.addEventListener("click", closeScanLeafReminder);
+    });
+    document.getElementById("scan-leaf-reminder-continue")?.addEventListener("click", confirmScanLeafReminder);
+  }
+
   function initScanUpload() {
     const zone = document.getElementById("scan-upload-zone");
     const input = document.getElementById("scan-upload-input");
@@ -1009,16 +1051,17 @@
 
     zone.addEventListener("click", (e) => {
       if (e.target === input) return;
-      input.click();
+      openScanLeafReminder();
     });
     zone.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        input.click();
+        openScanLeafReminder();
       }
     });
     input.addEventListener("change", () => {
       const file = input.files?.[0];
+      input.value = "";
       if (file) handleScanImageFile(file);
     });
     ["dragenter", "dragover"].forEach((type) => {
@@ -1032,7 +1075,7 @@
       e.preventDefault();
       zone.classList.remove("scan-upload--dragover");
       const file = e.dataTransfer?.files?.[0];
-      if (file) handleScanImageFile(file);
+      if (file) openScanLeafReminder(file);
     });
   }
 
@@ -1042,6 +1085,7 @@
       el.addEventListener("click", closeTileDrawer);
     });
     initScanUpload();
+    initScanLeafReminder();
 
     tilePlantNameInput?.addEventListener("input", () => {
       const statusEl = document.getElementById("tile-save-status");
@@ -1491,6 +1535,11 @@
 
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
+    const scanReminder = document.getElementById("scan-leaf-reminder");
+    if (scanReminder && !scanReminder.hidden) {
+      closeScanLeafReminder();
+      return;
+    }
     const deleteConfirm = document.getElementById("tile-delete-confirm");
     if (deleteConfirm && !deleteConfirm.hidden) {
       closeDeleteConfirm();

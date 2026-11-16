@@ -1991,6 +1991,68 @@
   background: #b71c1c;
 }
 
+.scan-leaf-reminder {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.scan-leaf-reminder[hidden] {
+  display: none !important;
+}
+
+.scan-leaf-reminder__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.scan-leaf-reminder__panel {
+  position: relative;
+  width: min(24rem, 100%);
+  padding: 1.25rem 1.25rem 1rem;
+  border-radius: 1rem;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+}
+
+.scan-leaf-reminder__title {
+  margin: 0 0 0.45rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.scan-leaf-reminder__message {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.scan-leaf-reminder__tips {
+  margin: 0.75rem 0 0;
+  padding-left: 1.15rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.scan-leaf-reminder__tips li + li {
+  margin-top: 0.2rem;
+}
+
+.scan-leaf-reminder__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
 .notification-anchor {
   position: relative;
 }
@@ -2197,7 +2259,8 @@
   .modal__panel,
   .out-of-credit-modal__panel,
   .validation-alert__panel,
-  .tile-delete-confirm__panel {
+  .tile-delete-confirm__panel,
+  .scan-leaf-reminder__panel {
     width: min(100%, 36rem);
   }
 
@@ -2210,13 +2273,15 @@
 
   .modal__footer,
   .out-of-credit-modal__footer,
-  .tile-delete-confirm__actions {
+  .tile-delete-confirm__actions,
+  .scan-leaf-reminder__actions {
     flex-wrap: wrap;
   }
 
   .modal__footer .btn,
   .out-of-credit-modal__footer .btn,
-  .tile-delete-confirm__actions .btn {
+  .tile-delete-confirm__actions .btn,
+  .scan-leaf-reminder__actions .btn {
     flex: 1 1 8rem;
   }
 
