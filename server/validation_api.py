@@ -32,7 +32,7 @@ def _predict_url(raw: str) -> str:
     return url
 
 
-_LIVE_SPECIALIST_URL = "https://predict-6af8c2898f0cdf0a7b3ba2a2-dproatj77a-as.a.run.app"
+_LIVE_SPECIALIST_URL = "https://predict-6afa58f182bb456194fcba6e-dproatj77a-dt.a.run.app"
 
 
 PORT = int(os.environ.get("VALIDATION_API_PORT", "8765"))
