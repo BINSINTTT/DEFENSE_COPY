@@ -11,26 +11,10 @@ services:
         value: https://predict-6ae37ce0bbd46ce898ad6e66-dproatj77a-df.a.run.app/predict
       - key: ULTRALYTICS_VALIDATION_API_KEY
         sync: false
-      - key: ULTRALYTICS_PREDICT_URL
+      - key: ULTRALYTICS_DISEASE_DETECTION_URL
+        value: https://predict-6aff18b5edc2675a21b3a417-dproatj77a-de.a.run.app/predict
+      - key: ULTRALYTICS_DISEASE_DETECTION_API_KEY
         sync: false
-      - key: ULTRALYTICS_API_KEY
-        sync: false
-      - key: ULTRALYTICS_SPECIALIST_URL
-        value: https://predict-6afa58f182bb456194fcba6e-dproatj77a-dt.a.run.app/predict
-      - key: ULTRALYTICS_SPECIALIST_API_KEY
-        sync: false
-      - key: ULTRALYTICS_SPECIALIST_CONF
-        value: "0.25"
-      - key: ULTRALYTICS_SPECIALIST_IOU
-        value: "0.5"
-      - key: ULTRALYTICS_SPECIALIST_IMGSZ
-        value: "640"
-      - key: ULTRALYTICS_SPECIALIST_WEIGHT
-        value: "0.65"
-      - key: ULTRALYTICS_SPECIALIST_MIN_CONFIDENCE
-        value: "0.5"
-      - key: ULTRALYTICS_SPECIALIST_MIN_MARGIN
-        value: "0.1"
       - key: GROQ_API_KEY
         sync: false
       - key: GROQ_MODEL

@@ -105,8 +105,8 @@ Then run `.\start.ps1` again.
 |----------|---------|
 | `GET /` | Serves static HTML/CSS/JS |
 | `POST /validate` | Tomato leaf check (Ultralytics proxy) |
-| `POST /classify` | Disease bars (Ultralytics proxy) |
-| `POST /assess-severity` | Per-disease symptom extent from the Ultralytics segmentation model |
+| `POST /classify` | Disease object detections (Ultralytics proxy) |
+| `POST /assess-severity` | OpenCV affected-area estimate for the selected disease |
 | `POST /recommend` | Disease care recommendations (Groq text model) |
 
 Browser scripts call these URLs to avoid CORS errors.
@@ -114,14 +114,16 @@ Browser scripts call these URLs to avoid CORS errors.
 ### Scan and severity flow
 
 1. The leaf validator accepts or rejects the uploaded image.
-2. The disease classifier returns confidence scores. These scores identify possible diseases only.
-3. The same image and top disease name are sent to the trained Ultralytics severity segmentation endpoint.
-4. The server calculates `matching symptom-mask area ÷ leaf-mask area × 100`, then converts it into Healthy, Mild (1–33%), Moderate (34–66%), or Severe (67–100%).
+2. The disease object detector returns detections. The app takes the highest-confidence detection for each of the four displayed classes and selects the top disease. Detection confidence identifies a disease; it is not severity.
+3. The same image and selected disease name are sent to the local OpenCV assessment endpoint.
+4. OpenCV estimates `symptom pixels ÷ leaf pixels × 100`, then assigns a severity label.
 5. The scan card shows the top disease and its severity. The complete per-disease severity map is kept with the saved scan and used by disease-specific care guides.
-6. OpenCV color rules and Groq Vision are not used for severity. The segmentation response must contain a `leaf` polygon and the selected disease's symptom polygon; otherwise the app reports Unable to Assess rather than inventing a percentage.
-7. If the model cannot detect the required masks, the classification remains visible and the user is asked to retake the image in focus with bright, even lighting.
+6. If OpenCV cannot identify a reliable leaf area, the classification remains visible and severity is reported as Unable to Assess.
+7. If the detector returns no recognized disease detections, the scan is not saved or charged.
 
-The segmentation percentage is an AI visual screening estimate, not a laboratory measurement or an expert-validated plant-disease severity score. The deployed endpoint requires internet access; offline mobile inference still requires integrating the exported TFLite model separately.
+The affected-area percentage is an image-processing estimate, not a laboratory measurement or an expert-validated plant-disease severity score. The object detection endpoint requires internet access.
+
+After training, put the new detector URL and API key in `server/.env` as `ULTRALYTICS_DISEASE_DETECTION_URL` and `ULTRALYTICS_DISEASE_DETECTION_API_KEY`. The detector response must include disease class names, either on each detection or through `metadata.classNames` with class IDs. The four dashboard classes are Healthy, TLCV, Early Blight, and Spotted Wilt; update the name aliases in `js/DiseaseClassification/disease-classification.js` if the new model uses different class names.
 
 ---
 

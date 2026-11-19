@@ -3,9 +3,7 @@
     classifyProxyUrl: (window.TOMATO_INSIGHT_API_BASE || "http://127.0.0.1:8765").replace(/\/$/, "") + "/classify",
     severityProxyUrl:
       (window.TOMATO_INSIGHT_API_BASE || "http://127.0.0.1:8765").replace(/\/$/, "") + "/assess-severity",
-    specialistProxyUrl:
-      (window.TOMATO_INSIGHT_API_BASE || "http://127.0.0.1:8765").replace(/\/$/, "") + "/refine-disease",
-    predictUrl: "https://predict-6ae38ddbc663e1b4d2a97fd5-dproatj77a-de.a.run.app/predict",
+    predictUrl: "",
     apiKey: "",
     /** null = use the deployment defaults, so results match the Ultralytics Predict page. */
     conf: null,
@@ -17,20 +15,20 @@
   const userConfig = window.TomatoInsightDiseaseConfig || {};
   const config = { ...DEFAULTS, ...userConfig };
 
-  /** Matches Ultralytics classNames from your deploy (see response metadata.classNames). */
+  /** Existing dashboard classes; match the detector's class names, not numeric IDs. */
   const DISEASE_LABELS = [
-    { barKey: "healthy", names: ["healthy"] },
+    { barKey: "healthy", names: ["healthy", "tomatohealthy"] },
     {
       barKey: "tlcv",
-      names: ["yellowleafcurlvirus", "yellow leaf curl virus", "tlcv", "yellow leaf curl"],
+      names: ["yellowleafcurlvirus", "tomatoyellowleafcurlvirus", "yellow leaf curl virus", "tlcv", "yellow leaf curl"],
     },
     {
       barKey: "early_blight",
-      names: ["earlyblightvirus", "early blight", "earlyblight"],
+      names: ["earlyblightvirus", "early blight", "earlyblight", "tomatoearlyblight"],
     },
     {
       barKey: "spotted_wilt",
-      names: ["spottedwiltvirus", "spotted wilt", "spottedwilt", "tswv"],
+      names: ["spottedwiltvirus", "tomatospottedwiltvirus", "spotted wilt", "spottedwilt", "tswv"],
     },
   ];
 
@@ -46,41 +44,55 @@
     return n > 1 ? n / 100 : n;
   }
 
+  function classNameFor(item, classNames) {
+    const raw = item?.name ?? item?.class_name ?? item?.className ?? item?.label;
+    const classId = item?.class_id ?? item?.classId ?? item?.class ?? item?.category_id;
+    const name = raw != null && String(raw).trim() ? raw : classId;
+    if (name == null || String(name).trim() === "") return "";
+    const value = String(name).trim();
+    if (/^\d+$/.test(value)) {
+      const mapped = classNames?.[value];
+      return mapped != null ? String(mapped).trim() : "";
+    }
+    return value;
+  }
+
   function collectResultItems(payload) {
     const items = [];
     if (!payload || typeof payload !== "object") return items;
+    const defaultNames = payload.metadata?.classNames ?? payload.metadata?.class_names
+      ?? payload.classNames ?? payload.class_names;
     if (Array.isArray(payload.images)) {
       payload.images.forEach((image) => {
-        const rows = Array.isArray(image?.results) ? image.results : [];
-        rows.forEach((item) => items.push({ item }));
+        const names = image?.classNames ?? image?.class_names ?? defaultNames;
+        const rows = image?.results ?? image?.predictions ?? [];
+        if (Array.isArray(rows)) rows.forEach((item) => items.push({ item, names }));
       });
     }
     if (Array.isArray(payload.results)) {
-      payload.results.forEach((item) => items.push({ item }));
+      payload.results.forEach((item) => items.push({ item, names: defaultNames }));
     }
     if (Array.isArray(payload.predictions)) {
-      payload.predictions.forEach((item) => items.push({ item }));
+      payload.predictions.forEach((item) => items.push({ item, names: defaultNames }));
     }
     return items;
   }
 
   function extractPredictions(payload) {
-    const results = [];
-    const seen = new Set();
+    const bestByClass = new Map();
 
-    collectResultItems(payload).forEach(({ item }) => {
-      const cleaned = String(item?.name || item?.class_name || item?.class || item?.label || "").trim();
+    collectResultItems(payload).forEach(({ item, names }) => {
+      const cleaned = classNameFor(item, names);
       if (!cleaned) return;
       const key = normalizeKey(cleaned);
-      if (seen.has(key)) return;
-      seen.add(key);
-      results.push({
-        name: cleaned,
-        confidence: normalizeConfidence(item?.confidence ?? item?.score ?? 0),
-      });
+      const confidence = normalizeConfidence(item?.confidence ?? item?.score ?? 0);
+      const previous = bestByClass.get(key);
+      if (!previous || confidence > previous.confidence) {
+        bestByClass.set(key, { name: cleaned, confidence });
+      }
     });
 
-    return results.sort((a, b) => b.confidence - a.confidence);
+    return [...bestByClass.values()].sort((a, b) => b.confidence - a.confidence);
   }
 
   function topBarKeyFromScores(scores) {
@@ -183,45 +195,6 @@
     }
   }
 
-  /** Refine only the Early Blight/Spotted Wilt pair with the fourth model. */
-  async function refineDiseaseScores(file, mainScores) {
-    const original = { ...mainScores };
-    const leading = topBarKeyFromScores(original);
-    if (!file || !["early_blight", "spotted_wilt"].includes(leading)) {
-      return { scores: original, applied: false, reason: "specialist_not_needed" };
-    }
-    const url = String(config.specialistProxyUrl || "").trim();
-    if (!url) return { scores: original, applied: false, reason: "specialist_proxy_not_configured" };
-
-    try {
-      const form = new FormData();
-      form.append("file", file, file.name || "upload.jpg");
-      form.append("main_scores", JSON.stringify(original));
-      const response = await fetch(url, { method: "POST", body: form });
-      const payload = await readJsonResponse(response);
-      if (!response.ok || !payload?.ok || !payload?.scores) {
-        console.warn("[TomatoInsight] Specialist refinement unavailable:", payload);
-        return { scores: original, applied: false, reason: payload?.reason || `http_${response.status}` };
-      }
-      const refined = { ...original };
-      ["healthy", "tlcv", "early_blight", "spotted_wilt"].forEach((key) => {
-        const value = Number(payload.scores[key]);
-        if (Number.isFinite(value)) refined[key] = Math.min(100, Math.max(0, value));
-      });
-      return {
-        scores: refined,
-        applied: Boolean(payload.applied),
-        reason: String(payload.reason || ""),
-        finalDisease: payload.final_disease || topBarKeyFromScores(refined),
-        evidence: payload.evidence || null,
-        model: payload.model || null,
-      };
-    } catch (err) {
-      console.warn("[TomatoInsight] Specialist refinement failed:", err);
-      return { scores: original, applied: false, reason: "network" };
-    }
-  }
-
   function mapToBarScores(predictions) {
     const byKey = new Map();
     predictions.forEach((item) => {
@@ -239,15 +212,7 @@
       let best = 0;
       names.forEach((label) => {
         const key = normalizeKey(label);
-        if (byKey.has(key)) {
-          best = Math.max(best, byKey.get(key));
-          return;
-        }
-        byKey.forEach((confidence, candidateKey) => {
-          if (candidateKey.includes(key) || key.includes(candidateKey)) {
-            best = Math.max(best, confidence);
-          }
-        });
+        if (byKey.has(key)) best = Math.max(best, byKey.get(key));
       });
       scores[barKey] = Math.round(best * 1000) / 10;
     });
@@ -381,7 +346,7 @@
         return { ok: false, error: "empty_predictions", raw: result };
       }
 
-      let scores = mapToBarScores(predictions);
+      const scores = mapToBarScores(predictions);
       const totalScore = Object.values(scores).reduce((sum, value) => sum + (Number(value) || 0), 0);
       if (totalScore <= 0) {
         showClassificationMessage(
@@ -394,15 +359,11 @@
 
       if (!stillCurrent()) return { ok: false, cancelled: true };
 
-      const specialist = await refineDiseaseScores(file, scores);
-      scores = specialist.scores;
-      if (!stillCurrent()) return { ok: false, cancelled: true };
-
       const diseaseKey = topBarKeyFromScores(scores);
       const severity = await assessSymptomSeverity(file, diseaseKey);
       if (!stillCurrent()) return { ok: false, cancelled: true };
 
-      console.log("[TomatoInsight] Bar scores:", scores, "Specialist:", specialist, "Severity:", severity);
+      console.log("[TomatoInsight] Detection scores:", scores, "OpenCV severity:", severity);
       window.TomatoInsightScan?.setClassificationScores?.(scores, severity);
       if (!severity.severityAssessable && severity.rescanRecommended) {
         const qualityIssues = Array.isArray(severity.imageQuality?.issues)
@@ -417,7 +378,7 @@
         );
       }
       await new Promise((resolve) => setTimeout(resolve, 480));
-      return { ok: true, scores, predictions, specialistRefinement: specialist, ...severity, raw: result };
+      return { ok: true, scores, predictions, ...severity, raw: result };
     } catch (err) {
       console.error("[TomatoInsight] Disease classification error:", err);
       const msg = String(err?.message || "");
@@ -438,7 +399,6 @@
     mapToBarScores,
     extractPredictions,
     assessSymptomSeverity,
-    refineDiseaseScores,
     topBarKeyFromScores,
   };
 })();

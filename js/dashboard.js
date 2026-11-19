@@ -24,7 +24,7 @@
   let tileDrawerCloseTimer = null;
   let activeTileNum = null;
   let activeTileImageDataUrl = null;
-  /** Symptom extent from segmentation masks (separate from AI confidence). */
+  /** Symptom extent measured by OpenCV (separate from AI confidence). */
   let activeSeverityPct = null;
   let activeSeverityMeta = null;
   let pendingScanTile = null;

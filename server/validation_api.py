@@ -7,7 +7,6 @@ Then open the site via http://127.0.0.1:8765/.
 from __future__ import annotations
 
 import os
-import json
 from pathlib import Path
 
 import requests
@@ -17,7 +16,6 @@ from flask_cors import CORS
 
 from groq.recommendations import fetch_care_recommendation, groq_is_configured
 from severity.assess import assess_severity
-from specialist.ultralytics_segmentation import refine_with_ultralytics_segmentation
 
 ROOT = Path(__file__).resolve().parent.parent
 HTML_DIR = ROOT / "html"
@@ -32,12 +30,9 @@ def _predict_url(raw: str) -> str:
     return url
 
 
-_LIVE_SPECIALIST_URL = "https://predict-6afa58f182bb456194fcba6e-dproatj77a-dt.a.run.app"
-
-
 PORT = int(os.environ.get("VALIDATION_API_PORT", "8765"))
-ULTRALYTICS_PREDICT_URL = _predict_url(os.environ.get("ULTRALYTICS_PREDICT_URL", ""))
-ULTRALYTICS_API_KEY = os.environ.get("ULTRALYTICS_API_KEY", "").strip()
+ULTRALYTICS_DETECTION_URL = _predict_url(os.environ.get("ULTRALYTICS_DISEASE_DETECTION_URL", ""))
+ULTRALYTICS_DETECTION_API_KEY = os.environ.get("ULTRALYTICS_DISEASE_DETECTION_API_KEY", "").strip()
 ULTRALYTICS_VALIDATION_URL = _predict_url(
     os.environ.get(
         # Keep the leaf classifier separate from the disease/severity models.
@@ -48,25 +43,9 @@ ULTRALYTICS_VALIDATION_URL = _predict_url(
     )
 )
 ULTRALYTICS_VALIDATION_API_KEY = (
-    os.environ.get("ULTRALYTICS_VALIDATION_API_KEY", "").strip() or ULTRALYTICS_API_KEY
+    os.environ.get("ULTRALYTICS_VALIDATION_API_KEY", "").strip()
+    or os.environ.get("ULTRALYTICS_API_KEY", "").strip()
 )
-ULTRALYTICS_SPECIALIST_URL = _predict_url(
-    os.environ.get("ULTRALYTICS_SPECIALIST_URL", _LIVE_SPECIALIST_URL)
-)
-ULTRALYTICS_SPECIALIST_API_KEY = (
-    os.environ.get("ULTRALYTICS_SPECIALIST_API_KEY", "").strip() or ULTRALYTICS_API_KEY
-)
-ULTRALYTICS_SPECIALIST_CONF = float(os.environ.get("ULTRALYTICS_SPECIALIST_CONF", "0.25"))
-ULTRALYTICS_SPECIALIST_IOU = float(os.environ.get("ULTRALYTICS_SPECIALIST_IOU", "0.5"))
-ULTRALYTICS_SPECIALIST_IMGSZ = int(os.environ.get("ULTRALYTICS_SPECIALIST_IMGSZ", "640"))
-ULTRALYTICS_SPECIALIST_WEIGHT = float(os.environ.get("ULTRALYTICS_SPECIALIST_WEIGHT", "0.65"))
-ULTRALYTICS_SPECIALIST_MIN_CONFIDENCE = float(
-    os.environ.get("ULTRALYTICS_SPECIALIST_MIN_CONFIDENCE", "0.5")
-)
-ULTRALYTICS_SPECIALIST_MIN_MARGIN = float(
-    os.environ.get("ULTRALYTICS_SPECIALIST_MIN_MARGIN", "0.1")
-)
-
 app = Flask(__name__)
 CORS(app)
 
@@ -79,15 +58,10 @@ def health():
             "validation_model": "ultralytics",
             "validation_url": ULTRALYTICS_VALIDATION_URL,
             "validation_configured": bool(ULTRALYTICS_VALIDATION_URL and ULTRALYTICS_VALIDATION_API_KEY),
-            "ultralytics_configured": bool(ULTRALYTICS_PREDICT_URL and ULTRALYTICS_API_KEY),
+            "ultralytics_configured": bool(ULTRALYTICS_DETECTION_URL and ULTRALYTICS_DETECTION_API_KEY),
             "severity_model": "opencv_color_segmentation",
             "severity_url": None,
             "severity_configured": True,
-            "specialist_model": "early_blight_spotted_wilt_segmentation",
-            "specialist_url": ULTRALYTICS_SPECIALIST_URL,
-            "specialist_configured": bool(
-                ULTRALYTICS_SPECIALIST_URL and ULTRALYTICS_SPECIALIST_API_KEY
-            ),
             "groq_configured": groq_is_configured(),
         }
     )
@@ -156,9 +130,9 @@ def validate():
 @app.route("/classify", methods=["POST"])
 def classify():
     return _forward_ultralytics(
-        ULTRALYTICS_PREDICT_URL,
-        ULTRALYTICS_API_KEY,
-        "Set ULTRALYTICS_PREDICT_URL and ULTRALYTICS_API_KEY in server/.env.",
+        ULTRALYTICS_DETECTION_URL,
+        ULTRALYTICS_DETECTION_API_KEY,
+        "Set ULTRALYTICS_DISEASE_DETECTION_URL and ULTRALYTICS_DISEASE_DETECTION_API_KEY in server/.env.",
     )
 
 
@@ -189,40 +163,6 @@ def assess_severity_route():
     result = assess_severity(image_bytes, disease)
     status = 200 if result.get("ok") else 400
     return jsonify(result), status
-
-
-@app.route("/refine-disease", methods=["POST"])
-def refine_disease_route():
-    """Use the fourth segmentation model to refine Early Blight vs Spotted Wilt."""
-    uploaded = request.files.get("file")
-    if uploaded is None or uploaded.filename == "":
-        return jsonify({"error": "missing_file", "message": "Send multipart field named file."}), 400
-    image_bytes = uploaded.read()
-    if not image_bytes:
-        return jsonify({"error": "empty_file", "message": "Uploaded file is empty."}), 400
-
-    raw_scores = request.form.get("main_scores", request.form.get("scores", "{}"))
-    try:
-        main_scores = json.loads(raw_scores)
-    except (TypeError, json.JSONDecodeError):
-        main_scores = None
-    if not isinstance(main_scores, dict):
-        return jsonify({"error": "invalid_scores", "message": "main_scores must be a JSON object."}), 400
-
-    result = refine_with_ultralytics_segmentation(
-        image_bytes,
-        uploaded.content_type,
-        main_scores,
-        ULTRALYTICS_SPECIALIST_URL,
-        ULTRALYTICS_SPECIALIST_API_KEY,
-        conf=ULTRALYTICS_SPECIALIST_CONF,
-        iou=ULTRALYTICS_SPECIALIST_IOU,
-        imgsz=ULTRALYTICS_SPECIALIST_IMGSZ,
-        specialist_weight=ULTRALYTICS_SPECIALIST_WEIGHT,
-        minimum_confidence=ULTRALYTICS_SPECIALIST_MIN_CONFIDENCE,
-        minimum_margin=ULTRALYTICS_SPECIALIST_MIN_MARGIN,
-    )
-    return jsonify(result)
 
 
 @app.route("/recommend", methods=["POST"])
@@ -292,7 +232,7 @@ def site_root():
 @app.route("/<path:path>", methods=["GET"])
 def static_files(path: str):
     if path.startswith(
-        ("validate", "classify", "refine-disease", "recommend", "health", "assess-severity")
+        ("validate", "classify", "recommend", "health", "assess-severity")
     ):
         return jsonify({"error": "not_found"}), 404
 
