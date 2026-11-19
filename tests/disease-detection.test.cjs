@@ -72,3 +72,17 @@ test("one detector request is followed by OpenCV assessment, with no specialist 
   assert.equal(result.affectedAreaPct, 18);
   assert.deepEqual(calls, ["http://localhost:8765/classify", "http://localhost:8765/assess-severity"]);
 });
+
+test("HTML gateway errors become a useful message", async () => {
+  const classifier = loadClassifier(async () => ({
+    ok: false,
+    status: 502,
+    text: async () => "<!DOCTYPE html><title>502</title>",
+  }));
+  const file = new Blob(["image"], { type: "image/jpeg" });
+  file.name = "leaf.jpg";
+  const result = await classifier.classifyImageFile(file);
+  assert.equal(result.ok, false);
+  assert.match(result.detail, /HTTP 502.*Retry the scan/);
+  assert.doesNotMatch(result.detail, /DOCTYPE/);
+});

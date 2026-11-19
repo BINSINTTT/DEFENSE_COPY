@@ -44,3 +44,27 @@ def test_classify_forwards_to_new_detector_without_exposing_key():
 
 def test_old_specialist_route_is_gone():
     assert all(rule.rule != "/refine-disease" for rule in api.app.url_map.iter_rules())
+
+
+def test_html_gateway_error_is_not_shown_to_users():
+    class Response:
+        status_code = 502
+        text = "<!DOCTYPE html><title>502</title>"
+
+        def json(self):
+            raise ValueError("not JSON")
+
+    with (
+        patch.object(api, "ULTRALYTICS_DETECTION_URL", "https://detector.example/predict"),
+        patch.object(api, "ULTRALYTICS_DETECTION_API_KEY", "test-secret"),
+        patch.object(api.requests, "post", return_value=Response()),
+    ):
+        response = api.app.test_client().post(
+            "/classify",
+            data={"file": (io.BytesIO(b"image bytes"), "leaf.jpg")},
+            content_type="multipart/form-data",
+        )
+
+    assert response.status_code == 502
+    assert "Retry the scan" in response.json["message"]
+    assert "<!DOCTYPE" not in response.json["message"]

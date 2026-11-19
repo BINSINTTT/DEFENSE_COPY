@@ -298,7 +298,10 @@
     try {
       return JSON.parse(text);
     } catch {
-      return { error: "invalid_json", message: text.slice(0, 200) };
+      return {
+        error: "invalid_json",
+        message: `The model service returned HTTP ${response.status} with an invalid response. Retry the scan; if this repeats, check the deployment logs.`,
+      };
     }
   }
 

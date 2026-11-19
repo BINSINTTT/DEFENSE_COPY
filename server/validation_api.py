@@ -113,7 +113,14 @@ def _forward_ultralytics(url: str, api_key: str, missing_message: str):
     try:
         payload = response.json()
     except ValueError:
-        payload = {"error": "invalid_json", "message": response.text[:500]}
+        status = response.status_code if response.status_code >= 400 else 502
+        return jsonify({
+            "error": "upstream_invalid_response",
+            "message": (
+                f"Ultralytics returned HTTP {response.status_code}. Retry the scan; "
+                "if this repeats, check the model deployment logs."
+            ),
+        }), status
 
     return jsonify(payload), response.status_code
 
