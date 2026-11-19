@@ -136,16 +136,9 @@
     if (!Number.isFinite(referenceWeek) || referenceWeek < nextWeek) return null;
 
     const scanIso = scanDayForReminder(savedAtIso, scanDayIso);
-    if (scanIso) {
-      const waited = daysBetween(scanIso, referenceIso);
-      if (waited != null && waited >= WEEK_DAYS) return nextWeek;
-    }
-
-    // Fallback when scan day was wall-clock: farm week has advanced from the shared anchor.
-    const sinceAnchor = daysBetween(schedule.anchor, referenceIso);
-    if (sinceAnchor != null && sinceAnchor >= WEEK_DAYS) return nextWeek;
-
-    return null;
+    if (!scanIso) return null;
+    const waited = daysBetween(scanIso, referenceIso);
+    return waited != null && waited >= WEEK_DAYS ? nextWeek : null;
   }
 
   function chooseDate(iso) {
