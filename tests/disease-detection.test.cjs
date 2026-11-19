@@ -57,8 +57,9 @@ test("unrecognized detector classes do not become a disease score", () => {
 
 test("one detector request is followed by OpenCV assessment, with no specialist request", async () => {
   const calls = [];
-  const classifier = loadClassifier(async (url) => {
+  const classifier = loadClassifier(async (url, options) => {
     calls.push(url);
+    if (url.endsWith("/classify")) assert.equal(options.body.get("conf"), "0.7");
     const payload = url.endsWith("/classify")
       ? { images: [{ results: [{ name: "SpottedWiltVirus", confidence: 0.9 }] }] }
       : { ok: true, severity: "Mild", severity_pct: 18, measurable: true, source: "opencv_color_segmentation" };

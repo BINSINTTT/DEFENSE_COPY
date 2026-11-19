@@ -5,8 +5,8 @@
       (window.TOMATO_INSIGHT_API_BASE || "http://127.0.0.1:8765").replace(/\/$/, "") + "/assess-severity",
     predictUrl: "",
     apiKey: "",
-    /** null = use the deployment defaults, so results match the Ultralytics Predict page. */
-    conf: null,
+    /** Minimum confidence required for a disease detection. */
+    conf: 0.7,
     iou: null,
 
     imgsz: null,

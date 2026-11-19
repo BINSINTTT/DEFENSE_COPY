@@ -7,8 +7,8 @@ window.TomatoInsightDiseaseConfig = {
   classifyProxyUrl: "http://127.0.0.1:8765/classify",
   predictUrl: "",
   apiKey: "",
-  /** null = use the deployment defaults, so results match the Ultralytics Predict page. */
-  conf: null,
+  /** Require at least 70% confidence from the disease detector. */
+  conf: 0.7,
   iou: null,
   imgsz: null,
 };
