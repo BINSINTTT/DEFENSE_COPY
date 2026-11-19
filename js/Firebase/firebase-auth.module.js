@@ -11,7 +11,6 @@ import {
   signOut as firebaseSignOut,
   sendEmailVerification,
   sendPasswordResetEmail as firebaseSendPasswordResetEmail,
-  fetchSignInMethodsForEmail,
   verifyPasswordResetCode as firebaseVerifyPasswordResetCode,
   confirmPasswordReset as firebaseConfirmPasswordReset,
   updateProfile,
@@ -337,10 +336,6 @@ window.TomatoInsightAuth = {
     if (!trimmed) return { ok: false, error: "Enter your email address." };
     if (!isAllowedGmail(trimmed)) return { ok: false, error: gmailOnlyError() };
     try {
-      const methods = await fetchSignInMethodsForEmail(auth, trimmed);
-      if (!methods.length) {
-        return { ok: false, error: "This email is not registered." };
-      }
       const resetPageUrl = new URL("reset-password.html", window.location.href).href;
       const actionCodeSettings = {
         url: resetPageUrl,

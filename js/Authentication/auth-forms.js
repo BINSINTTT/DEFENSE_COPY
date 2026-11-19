@@ -932,7 +932,7 @@
         if (result.ok) {
           showFormSuccess(
             successEl,
-            "Password reset link sent. Check your inbox and spam folder."
+            "If this email has an account, check your inbox and spam folder for a password reset link."
           );
           form.email.value = "";
           return;

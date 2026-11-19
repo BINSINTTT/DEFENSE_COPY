@@ -308,7 +308,7 @@
   color: var(--accent);
 }
 
-.profile-btn--accent {
+.main-panel--profile-layout .profile-btn--accent {
   background: var(--accent);
   color: #fff;
 }
