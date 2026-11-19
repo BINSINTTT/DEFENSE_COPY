@@ -9,11 +9,12 @@ const script = fs.readFileSync(
   "utf8"
 );
 
-function loadClassifier(fetch) {
+function loadClassifier(fetch, config = {}, setScores = () => {}) {
   const window = {
     TOMATO_INSIGHT_API_BASE: "http://localhost:8765",
     TomatoInsightValidation: { finishLoading() {} },
-    TomatoInsightScan: { setClassificationScores() {} },
+    TomatoInsightScan: { setClassificationScores: setScores },
+    TomatoInsightDiseaseConfig: config,
   };
   const context = {
     window,
@@ -59,9 +60,10 @@ test("one detector request is followed by OpenCV assessment, with no specialist 
   const calls = [];
   const classifier = loadClassifier(async (url, options) => {
     calls.push(url);
-    if (url.endsWith("/classify")) assert.equal(options.body.get("conf"), "0.7");
+    if (url.endsWith("/classify")) assert.equal(options.body.get("conf"), "0.2");
+    if (url.endsWith("/assess-severity")) assert.equal(options.body.get("leaf_mask_png"), "test-mask");
     const payload = url.endsWith("/classify")
-      ? { images: [{ results: [{ name: "SpottedWiltVirus", confidence: 0.9 }] }] }
+      ? { images: [{ results: [{ name: "SpottedWiltVirus", confidence: 0.9 }] }], leaf_mask_png: "test-mask" }
       : { ok: true, severity: "Mild", severity_pct: 18, measurable: true, source: "opencv_color_segmentation" };
     return { ok: true, status: 200, text: async () => JSON.stringify(payload) };
   });
@@ -71,19 +73,48 @@ test("one detector request is followed by OpenCV assessment, with no specialist 
   assert.equal(result.ok, true);
   assert.equal(result.scores.spotted_wilt, 90);
   assert.equal(result.affectedAreaPct, 18);
+  assert.equal(result.raw.leaf_mask_png, undefined);
   assert.deepEqual(calls, ["http://localhost:8765/classify", "http://localhost:8765/assess-severity"]);
 });
 
+test("an uncertain leaf crop stops before disease detection", async () => {
+  const calls = [];
+  const scoreUpdates = [];
+  const classifier = loadClassifier(async (url) => {
+    calls.push(url);
+    return {
+      ok: false,
+      status: 422,
+      text: async () => JSON.stringify({
+        error: "leaf_isolation_failed",
+        message: "Please scan another tomato leaf.",
+      }),
+    };
+  }, {}, (scores) => scoreUpdates.push(scores));
+  const file = new Blob(["image"], { type: "image/jpeg" });
+  file.name = "leaf.jpg";
+  const result = await classifier.classifyImageFile(file);
+  assert.equal(result.error, "leaf_isolation_failed");
+  assert.deepEqual(calls, ["http://localhost:8765/classify"]);
+  assert.equal(scoreUpdates.length, 1);
+  assert.equal(Object.keys(scoreUpdates[0]).length, 0);
+});
+
 test("HTML gateway errors become a useful message", async () => {
-  const classifier = loadClassifier(async () => ({
+  let requestCount = 0;
+  const classifier = loadClassifier(async () => {
+    requestCount += 1;
+    return ({
     ok: false,
     status: 502,
     text: async () => "<!DOCTYPE html><title>502</title>",
-  }));
+    });
+  }, { predictUrl: "https://example.com/predict", apiKey: "unused" });
   const file = new Blob(["image"], { type: "image/jpeg" });
   file.name = "leaf.jpg";
   const result = await classifier.classifyImageFile(file);
   assert.equal(result.ok, false);
   assert.match(result.detail, /HTTP 502.*Retry the scan/);
   assert.doesNotMatch(result.detail, /DOCTYPE/);
+  assert.equal(requestCount, 1);
 });

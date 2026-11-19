@@ -114,14 +114,16 @@ Browser scripts call these URLs to avoid CORS errors.
 ### Scan and severity flow
 
 1. The leaf validator accepts or rejects the uploaded image.
-2. The disease object detector returns detections. The app takes the highest-confidence detection for each of the four displayed classes and selects the top disease. Detection confidence identifies a disease; it is not severity.
-3. The same image and selected disease name are sent to the local OpenCV assessment endpoint.
-4. OpenCV estimates `symptom pixels ÷ leaf pixels × 100`, then assigns a severity label.
+2. Python/OpenCV separates a prominent leaf, gently improves brightness and local contrast, masks its background white, and sends that internal crop to the disease object detector. If one leaf cannot be separated reliably, the scan asks for another photo. The selected crop is not shown in the dashboard.
+3. The app takes the highest-confidence detection for each of the four displayed classes and selects the top disease. Detection confidence identifies a disease; it is not severity.
+4. The original image, selected disease, and the same leaf mask are sent to the local OpenCV assessment endpoint. OpenCV estimates `symptom pixels ÷ leaf pixels × 100`, then assigns a severity label.
 5. The scan card shows the top disease and its severity. The complete per-disease severity map is kept with the saved scan and used by disease-specific care guides.
-6. If OpenCV cannot identify a reliable leaf area, the classification remains visible and severity is reported as Unable to Assess.
+6. If OpenCV cannot measure severity reliably, the classification remains visible and severity is reported as Unable to Assess.
 7. If the detector returns no recognized disease detections, the scan is not saved or charged.
 
 The affected-area percentage is an image-processing estimate, not a laboratory measurement or an expert-validated plant-disease severity score. The object detection endpoint requires internet access.
+
+Image enhancement changes only the detector input. OpenCV severity still measures the original photo with the isolated leaf mask. Enhancement may make dark symptoms easier to see, but its effect on model accuracy needs testing against labeled photos.
 
 After training, put the new detector URL and API key in `server/.env` as `ULTRALYTICS_DISEASE_DETECTION_URL` and `ULTRALYTICS_DISEASE_DETECTION_API_KEY`. The detector response must include disease class names, either on each detection or through `metadata.classNames` with class IDs. The four dashboard classes are Healthy, TLCV, Early Blight, and Spotted Wilt; update the name aliases in `js/DiseaseClassification/disease-classification.js` if the new model uses different class names.
 

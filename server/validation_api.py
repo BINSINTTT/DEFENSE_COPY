@@ -6,6 +6,8 @@ Then open the site via http://127.0.0.1:8765/.
 
 from __future__ import annotations
 
+import base64
+import binascii
 import os
 from pathlib import Path
 
@@ -15,7 +17,8 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 from groq.recommendations import fetch_care_recommendation, groq_is_configured
-from severity.assess import assess_severity
+from severity.assess import assess_severity, decode_image
+from severity.leaf_isolation import isolate_leaf
 
 ROOT = Path(__file__).resolve().parent.parent
 HTML_DIR = ROOT / "html"
@@ -74,7 +77,10 @@ def _bearer_from_request() -> str:
     return ""
 
 
-def _forward_ultralytics(url: str, api_key: str, missing_message: str):
+def _forward_ultralytics(
+    url: str, api_key: str, missing_message: str, default_conf: str | None = None,
+    *, isolate: bool = False,
+):
     if not url or not api_key:
         return jsonify({"error": "missing_config", "message": missing_message}), 500
 
@@ -86,16 +92,29 @@ def _forward_ultralytics(url: str, api_key: str, missing_message: str):
     if not image_bytes:
         return jsonify({"error": "empty_file", "message": "Uploaded file is empty."}), 400
 
+    leaf = None
+    if isolate:
+        leaf, reason = isolate_leaf(decode_image(image_bytes))
+        if leaf is None:
+            return jsonify({
+                "error": "leaf_isolation_failed",
+                "reason": reason,
+                "message": "We couldn't isolate one leaf from this photo. Please scan another tomato leaf in clear, even light.",
+            }), 422
+        image_bytes = leaf.image_png
+
     data = {
         key: request.form[key].strip()
         for key in ("conf", "iou", "imgsz")
         if request.form.get(key, "").strip()
     }
+    if default_conf is not None:
+        data.setdefault("conf", default_conf)
     files = {
         "file": (
-            uploaded.filename or "upload.jpg",
+            "isolated-leaf.png" if leaf is not None else uploaded.filename or "upload.jpg",
             image_bytes,
-            uploaded.content_type or "application/octet-stream",
+            "image/png" if leaf is not None else uploaded.content_type or "application/octet-stream",
         )
     }
 
@@ -122,6 +141,8 @@ def _forward_ultralytics(url: str, api_key: str, missing_message: str):
             ),
         }), status
 
+    if leaf is not None and 200 <= response.status_code < 300 and isinstance(payload, dict):
+        payload["leaf_mask_png"] = base64.b64encode(leaf.mask_png).decode("ascii")
     return jsonify(payload), response.status_code
 
 
@@ -140,6 +161,8 @@ def classify():
         ULTRALYTICS_DETECTION_URL,
         ULTRALYTICS_DETECTION_API_KEY,
         "Set ULTRALYTICS_DISEASE_DETECTION_URL and ULTRALYTICS_DISEASE_DETECTION_API_KEY in server/.env.",
+        default_conf="0.2",
+        isolate=True,
     )
 
 
@@ -167,7 +190,13 @@ def assess_severity_route():
         or ""
     ).strip()
 
-    result = assess_severity(image_bytes, disease)
+    raw_mask = request.form.get("leaf_mask_png")
+    try:
+        mask_png = base64.b64decode(raw_mask, validate=True) if raw_mask is not None else None
+    except (binascii.Error, ValueError):
+        return jsonify({"error": "invalid_leaf_mask", "message": "Leaf mask could not be decoded."}), 400
+
+    result = assess_severity(image_bytes, disease, leaf_mask_png=mask_png)
     status = 200 if result.get("ok") else 400
     return jsonify(result), status
 

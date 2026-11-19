@@ -3,10 +3,8 @@
     classifyProxyUrl: (window.TOMATO_INSIGHT_API_BASE || "http://127.0.0.1:8765").replace(/\/$/, "") + "/classify",
     severityProxyUrl:
       (window.TOMATO_INSIGHT_API_BASE || "http://127.0.0.1:8765").replace(/\/$/, "") + "/assess-severity",
-    predictUrl: "",
-    apiKey: "",
     /** Minimum confidence required for a disease detection. */
-    conf: 0.7,
+    conf: 0.2,
     iou: null,
 
     imgsz: null,
@@ -134,7 +132,7 @@
    * Separate image-based symptom assessment. Classification scores identify
    * disease candidates only; the backend never converts confidence to severity.
    */
-  async function assessSymptomSeverity(file, diseaseKey) {
+  async function assessSymptomSeverity(file, diseaseKey, leafMaskPng) {
     const unable = {
       severityPct: null,
       severityLabel: "Unable to Assess",
@@ -154,6 +152,7 @@
       form.append("file", file, file.name || "upload.jpg");
       form.append("disease", diseaseKey);
       form.append("bar_key", diseaseKey);
+      if (leafMaskPng) form.append("leaf_mask_png", leafMaskPng);
       const response = await fetch(url, { method: "POST", body: form });
       const payload = await readJsonResponse(response);
       if (!response.ok || !payload?.ok) {
@@ -258,37 +257,9 @@
     return form;
   }
 
-  async function postToClassifier(file, useProxy) {
-    const directUrl = config.predictUrl?.trim();
-    const hasDirect =
-      directUrl && config.apiKey && config.apiKey !== "YOUR_ULTRALYTICS_API_KEY";
-
-    if (useProxy) {
-      const proxyUrl = config.classifyProxyUrl.trim();
-      const proxyResponse = await fetch(proxyUrl, {
-        method: "POST",
-        body: buildClassifierForm(file),
-      });
-      const proxyBroken =
-        proxyResponse.status === 404 ||
-        proxyResponse.status === 405 ||
-        proxyResponse.status === 502;
-      if (!proxyBroken) return proxyResponse;
-      console.warn(
-        "[TomatoInsight] Classify proxy unavailable (HTTP",
-        proxyResponse.status,
-        "). Trying Ultralytics directly."
-      );
-      if (!hasDirect) return proxyResponse;
-    }
-
-    if (!hasDirect) {
-      throw new Error("Classification API is not configured.");
-    }
-
-    return fetch(directUrl, {
+  async function postToClassifier(file) {
+    return fetch(config.classifyProxyUrl.trim(), {
       method: "POST",
-      headers: { Authorization: `Bearer ${config.apiKey}` },
       body: buildClassifierForm(file),
     });
   }
@@ -316,8 +287,7 @@
       return { ok: false, error: "not_an_image" };
     }
 
-    const useProxy = Boolean(config.classifyProxyUrl?.trim());
-    if (!useProxy && (!config.predictUrl?.trim() || !config.apiKey || config.apiKey === "YOUR_ULTRALYTICS_API_KEY")) {
+    if (!config.classifyProxyUrl?.trim()) {
       console.warn("[TomatoInsight] Disease classification not configured.");
       stopLoading();
       return { ok: false, error: "missing_config" };
@@ -326,38 +296,47 @@
     setClassifying(true);
 
     try {
-      let response = await postToClassifier(file, useProxy);
+      const response = await postToClassifier(file);
 
       const result = await readJsonResponse(response);
-      console.log("[TomatoInsight] Disease classification:", result);
+      const { leaf_mask_png: leafMaskPng, ...classificationResult } = result || {};
+      console.log("[TomatoInsight] Disease classification:", classificationResult);
 
       if (!response.ok) {
+        if (!stillCurrent()) return { ok: false, cancelled: true };
+        window.TomatoInsightScan?.setClassificationScores?.({});
         const detail =
           result?.message ||
           result?.error ||
           `Classification failed (${response.status}). Restart server/start.ps1 if /classify was added recently.`;
         console.error("[TomatoInsight]", detail);
-        showClassificationMessage("Classification failed", detail, "error");
-        return { ok: false, error: "http_error", detail, raw: result };
+        const needsAnotherLeaf = result?.error === "leaf_isolation_failed";
+        showClassificationMessage(
+          needsAnotherLeaf ? "Scan another leaf" : "Classification failed",
+          detail,
+          needsAnotherLeaf ? "warning" : "error"
+        );
+        return { ok: false, error: needsAnotherLeaf ? "leaf_isolation_failed" : "http_error", detail, raw: classificationResult };
       }
 
-      const predictions = extractPredictions(result);
+      const predictions = extractPredictions(classificationResult);
       const scores = mapToBarScores(predictions);
       const totalScore = Object.values(scores).reduce((sum, value) => sum + (Number(value) || 0), 0);
       if (!predictions.length || totalScore <= 0) {
         if (!stillCurrent()) return { ok: false, cancelled: true };
+        window.TomatoInsightScan?.setClassificationScores?.({});
         showClassificationMessage(
           "Scan another leaf",
           "We couldn't identify a disease from this scan. Please scan another tomato leaf in bright, even light.",
           "warning"
         );
-        return { ok: false, error: "empty_predictions", raw: result };
+        return { ok: false, error: "empty_predictions", raw: classificationResult };
       }
 
       if (!stillCurrent()) return { ok: false, cancelled: true };
 
       const diseaseKey = topBarKeyFromScores(scores);
-      const severity = await assessSymptomSeverity(file, diseaseKey);
+      const severity = await assessSymptomSeverity(file, diseaseKey, leafMaskPng);
       if (!stillCurrent()) return { ok: false, cancelled: true };
 
       console.log("[TomatoInsight] Detection scores:", scores, "OpenCV severity:", severity);
@@ -375,7 +354,7 @@
         );
       }
       await new Promise((resolve) => setTimeout(resolve, 480));
-      return { ok: true, scores, predictions, ...severity, raw: result };
+      return { ok: true, scores, predictions, ...severity, raw: classificationResult };
     } catch (err) {
       console.error("[TomatoInsight] Disease classification error:", err);
       const msg = String(err?.message || "");

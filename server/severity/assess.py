@@ -14,6 +14,7 @@ import cv2
 import numpy as np
 
 from . import thresholds as thr
+from .leaf_isolation import decode_leaf_mask
 
 UNABLE = "Unable to Assess"
 VALID_DISEASES = frozenset({"healthy", "early_blight", "tlcv", "spotted_wilt"})
@@ -350,7 +351,9 @@ def affected_pct_from_masks(leaf_mask: np.ndarray, symptoms: np.ndarray) -> floa
     return round(min(100.0, symptom_pixels / leaf_pixels * 100.0), 2)
 
 
-def assess_severity(image_bytes: bytes, disease_raw: str | None) -> dict[str, Any]:
+def assess_severity(
+    image_bytes: bytes, disease_raw: str | None, *, leaf_mask_png: bytes | None = None
+) -> dict[str, Any]:
     disease = _normalize_disease(disease_raw)
     if not disease:
         return {
@@ -377,7 +380,11 @@ def assess_severity(image_bytes: bytes, disease_raw: str | None) -> dict[str, An
             reason="image_decode_failed",
         )
 
-    leaf_mask, failure = segment_leaf(bgr)
+    if leaf_mask_png is not None:
+        leaf_mask = decode_leaf_mask(leaf_mask_png, bgr.shape[:2])
+        failure = "invalid_leaf_mask" if leaf_mask is None else ""
+    else:
+        leaf_mask, failure = segment_leaf(bgr)
     if leaf_mask is None:
         return _result(
             disease=disease,
