@@ -342,19 +342,13 @@
       }
 
       const predictions = extractPredictions(result);
-      if (!predictions.length) {
-        const msg =
-          "The model returned no scores. Check the console log for the raw JSON shape.";
-        showClassificationMessage("Classification failed", msg, "warning");
-        return { ok: false, error: "empty_predictions", raw: result };
-      }
-
       const scores = mapToBarScores(predictions);
       const totalScore = Object.values(scores).reduce((sum, value) => sum + (Number(value) || 0), 0);
-      if (totalScore <= 0) {
+      if (!predictions.length || totalScore <= 0) {
+        if (!stillCurrent()) return { ok: false, cancelled: true };
         showClassificationMessage(
-          "Classification failed",
-          "The model returned no scores. This scan was not charged.",
+          "Scan another leaf",
+          "We couldn't identify a disease from this scan. Please scan another tomato leaf in bright, even light.",
           "warning"
         );
         return { ok: false, error: "empty_predictions", raw: result };
