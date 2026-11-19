@@ -177,15 +177,26 @@
                       <strong>5 bonus scan credits</strong> (one time).
                     </p>
                     <form class="profile-form" id="profile-details-form">
-                      <div class="profile-form__row profile-form__row--three">
+                      <div class="profile-form__row profile-form__row--name">
                         <label>First name
                           <input type="text" id="profile-first-name" name="firstName" autocomplete="given-name" required />
                         </label>
-                        <label>M.I.
-                          <input type="text" id="profile-middle-initial" name="middleInitial" autocomplete="additional-name" maxlength="1" />
+                        <label>M.I. <span class="profile-form__hint">Optional</span>
+                          <input type="text" id="profile-middle-initial" name="middleInitial" autocomplete="additional-name" maxlength="1" aria-label="Middle initial (optional)" />
                         </label>
                         <label>Last name
                           <input type="text" id="profile-last-name" name="lastName" autocomplete="family-name" required />
+                        </label>
+                        <label>Suffix
+                          <select id="profile-name-suffix" name="nameSuffix" autocomplete="honorific-suffix" aria-label="Name suffix (optional)">
+                            <option value="">None</option>
+                            <option value="Jr.">Jr.</option>
+                            <option value="Sr.">Sr.</option>
+                            <option value="II">II</option>
+                            <option value="III">III</option>
+                            <option value="IV">IV</option>
+                            <option value="V">V</option>
+                          </select>
                         </label>
                       </div>
                       <label>Farm name

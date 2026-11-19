@@ -91,7 +91,8 @@
     const first = String(profile.firstName || "").trim();
     const middle = String(profile.middleInitial || "").trim().toUpperCase().slice(0, 1);
     const last = String(profile.lastName || "").trim();
-    return [first, middle, last].filter(Boolean).join(" ");
+    const suffix = String(profile.nameSuffix || "").trim();
+    return [first, middle, last, suffix].filter(Boolean).join(" ");
   }
 
   function paintSidebarName(uid, fallbackName) {

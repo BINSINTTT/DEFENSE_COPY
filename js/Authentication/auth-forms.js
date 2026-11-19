@@ -1039,6 +1039,7 @@
       const firstName = form.firstName.value.trim();
       const middleInitial = form.middleInitial.value.trim().toUpperCase();
       const lastName = form.lastName.value.trim();
+      const nameSuffix = form.nameSuffix?.value?.trim() || "";
       const email = form.email.value.trim();
       const password = form.password.value;
       const confirmPassword = form.confirmPassword.value;
@@ -1088,6 +1089,7 @@
         firstName,
         middleInitial: middleInitial || "",
         lastName,
+        nameSuffix,
       });
       setSignupLeaveGuard(true);
       setSignupLock(true, "Creating your account… Stay on this page until verification is ready.");
@@ -1096,10 +1098,11 @@
           firstName,
           middleInitial: middleInitial || null,
           lastName,
+          nameSuffix: nameSuffix || null,
           email,
           password,
           farmName: "",
-          displayName: [firstName, middleInitial, lastName].filter(Boolean).join(" "),
+          displayName: [firstName, middleInitial, lastName, nameSuffix].filter(Boolean).join(" "),
         });
         if (result.ok && result.needsVerification) {
           writePendingSignup({ status: "awaiting_verification", email: result.email || email, password });

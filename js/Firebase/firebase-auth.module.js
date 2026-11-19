@@ -168,7 +168,7 @@ window.TomatoInsightAuth = {
 
   async signUpWithEmail(payload) {
     if (!auth) return { ok: false, error: "Firebase is not configured." };
-    const { email, password, displayName, firstName, middleInitial, lastName, farmName } = payload;
+    const { email, password, displayName, firstName, middleInitial, lastName, nameSuffix, farmName } = payload;
     const trimmedEmail = String(email || "").trim();
     if (!isAllowedGmail(trimmedEmail)) return { ok: false, error: gmailOnlyError() };
     try {
@@ -189,6 +189,7 @@ window.TomatoInsightAuth = {
             firstName: firstName || "",
             middleInitial: (middleInitial || "").toString().trim().toUpperCase().slice(0, 1),
             lastName: lastName || "",
+            nameSuffix: String(nameSuffix || "").trim(),
             farmName: farmName || "",
             email: trimmedEmail,
             updatedAt: Date.now(),
@@ -214,6 +215,7 @@ window.TomatoInsightAuth = {
               firstName: firstName || "",
               middleInitial: middleInitial || "",
               lastName: lastName || "",
+              nameSuffix: nameSuffix || "",
               farmName: farmName || "",
               email: trimmedEmail,
             },

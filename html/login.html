@@ -175,8 +175,10 @@
                         required
                       />
                     </div>
-                    <div class="auth-signin__field">
-                      <label class="form-label auth-split-label" for="signup-middle-initial">M.I.</label>
+                    <div class="auth-signin__field auth-signin__field--mi">
+                      <label class="form-label auth-split-label" for="signup-middle-initial">
+                        M.I. <span class="auth-split-label-optional">Optional</span>
+                      </label>
                       <input
                         type="text"
                         class="form-control auth-split-input text-center text-uppercase"
@@ -187,7 +189,7 @@
                         pattern="[A-Za-z]"
                         inputmode="text"
                         placeholder="M"
-                        aria-label="Middle initial"
+                        aria-label="Middle initial (optional)"
                       />
                     </div>
                     <div class="auth-signin__field">
@@ -201,6 +203,24 @@
                         placeholder="Last name"
                         required
                       />
+                    </div>
+                    <div class="auth-signin__field auth-signin__field--suffix">
+                      <label class="form-label auth-split-label" for="signup-name-suffix">Suffix</label>
+                      <select
+                        class="form-control auth-split-input auth-split-select"
+                        id="signup-name-suffix"
+                        name="nameSuffix"
+                        autocomplete="honorific-suffix"
+                        aria-label="Name suffix (optional)"
+                      >
+                        <option value="">None</option>
+                        <option value="Jr.">Jr.</option>
+                        <option value="Sr.">Sr.</option>
+                        <option value="II">II</option>
+                        <option value="III">III</option>
+                        <option value="IV">IV</option>
+                        <option value="V">V</option>
+                      </select>
                     </div>
                   </div>
 

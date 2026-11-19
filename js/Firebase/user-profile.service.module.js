@@ -4,30 +4,65 @@ import { syncProfileToRtdb } from "./user-data-sync.module.js";
 
 const LOCAL_KEY = "tomatoInsight.userProfiles";
 
-export function buildDisplayName({ firstName, middleInitial, lastName }) {
+const NAME_SUFFIX_MAP = {
+  jr: "Jr.",
+  "jr.": "Jr.",
+  junior: "Jr.",
+  sr: "Sr.",
+  "sr.": "Sr.",
+  senior: "Sr.",
+  ii: "II",
+  iii: "III",
+  iv: "IV",
+  v: "V",
+  "2nd": "II",
+  "3rd": "III",
+  "4th": "IV",
+  "5th": "V",
+};
+
+export function normalizeNameSuffix(value) {
+  const raw = String(value ?? "")
+    .trim()
+    .replace(/,+$/, "");
+  if (!raw) return "";
+  return NAME_SUFFIX_MAP[raw.toLowerCase()] || "";
+}
+
+function splitNameSuffix(parts) {
+  if (parts.length < 3) return { parts, nameSuffix: "" };
+  const nameSuffix = normalizeNameSuffix(parts[parts.length - 1]);
+  if (!nameSuffix) return { parts, nameSuffix: "" };
+  return { parts: parts.slice(0, -1), nameSuffix };
+}
+
+export function buildDisplayName({ firstName, middleInitial, lastName, nameSuffix }) {
   const mi = middleInitial?.trim().toUpperCase();
-  return [firstName?.trim(), mi || null, lastName?.trim()].filter(Boolean).join(" ");
+  const suffix = normalizeNameSuffix(nameSuffix);
+  const core = [firstName?.trim(), mi || null, lastName?.trim()].filter(Boolean).join(" ");
+  return suffix ? `${core} ${suffix}` : core;
 }
 
 export function parseDisplayName(displayName) {
   if (!displayName?.trim()) {
-    return { firstName: "", middleInitial: "", lastName: "" };
+    return { firstName: "", middleInitial: "", lastName: "", nameSuffix: "" };
   }
-  const parts = displayName.trim().split(/\s+/);
+  const { parts, nameSuffix } = splitNameSuffix(displayName.trim().split(/\s+/));
   if (parts.length === 1) {
-    return { firstName: parts[0], middleInitial: "", lastName: "" };
+    return { firstName: parts[0], middleInitial: "", lastName: "", nameSuffix };
   }
   if (parts.length === 2) {
-    return { firstName: parts[0], middleInitial: "", lastName: parts[1] };
+    return { firstName: parts[0], middleInitial: "", lastName: parts[1], nameSuffix };
   }
   if (parts.length >= 3 && parts[1].length === 1) {
     return {
       firstName: parts[0],
       middleInitial: parts[1].toUpperCase(),
       lastName: parts.slice(2).join(" "),
+      nameSuffix,
     };
   }
-  return { firstName: parts[0], middleInitial: "", lastName: parts.slice(1).join(" ") };
+  return { firstName: parts[0], middleInitial: "", lastName: parts.slice(1).join(" "), nameSuffix };
 }
 
 function readLocalMap() {
@@ -65,6 +100,7 @@ function normalizeProfile(raw) {
       .toUpperCase()
       .slice(0, 1),
     lastName: String(raw?.lastName ?? "").trim(),
+    nameSuffix: normalizeNameSuffix(raw?.nameSuffix),
     farmName: String(raw?.farmName ?? "").trim(),
     email: String(raw?.email ?? "").trim(),
     photo: sanitizePhoto(raw?.photo),
@@ -92,6 +128,7 @@ function mergeProfileForUser(uid, authUser) {
     firstName: firstNonEmpty(local?.firstName, fromSignUpDisplayName.firstName),
     middleInitial: firstNonEmpty(local?.middleInitial, fromSignUpDisplayName.middleInitial),
     lastName: firstNonEmpty(local?.lastName, fromSignUpDisplayName.lastName),
+    nameSuffix: firstNonEmpty(local?.nameSuffix, fromSignUpDisplayName.nameSuffix),
     farmName: firstNonEmpty(local?.farmName),
     email: firstNonEmpty(local?.email, authUser?.email),
     photo: local?.photo || "",

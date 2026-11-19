@@ -2,7 +2,7 @@
  * Firestore — per-user farmer account and farm data.
  *
  *   users/{uid}
- *     firstName, middleInitial, lastName, farmName, email, photo, updatedAt
+ *     firstName, middleInitial, lastName, nameSuffix, farmName, email, photo, updatedAt
  *     credits: { balance, signupGranted, profileBonusGranted, updatedAt }
  *     layout: { rows, columns, updatedAt }
  *     selectedFarmWeek
@@ -119,6 +119,14 @@ function coalesceStr(...values) {
   return "";
 }
 
+function coalesceDefinedStr(...values) {
+  for (const v of values) {
+    if (v === undefined || v === null) continue;
+    return String(v).trim();
+  }
+  return "";
+}
+
 function coalesceMiddleInitial(...values) {
   for (const v of values) {
     const s = String(v ?? "")
@@ -152,6 +160,7 @@ function mergeProfileFields(incoming, local, existing) {
       existing.middleInitial
     ),
     lastName: coalesceStr(incoming.lastName, local.lastName, existing.lastName),
+    nameSuffix: coalesceDefinedStr(incoming.nameSuffix, local.nameSuffix, existing.nameSuffix),
     farmName: coalesceStr(incoming.farmName, local.farmName, existing.farmName),
     email: coalesceStr(incoming.email, local.email, existing.email),
     photo: mergePhoto(incoming, local, existing),
@@ -1028,6 +1037,7 @@ export async function hydrateUserFromRtdb(uid, email) {
     firstName: cached.firstName || "",
     middleInitial: cached.middleInitial || "",
     lastName: cached.lastName || "",
+    nameSuffix: cached.nameSuffix || "",
     farmName: cached.farmName || "",
     email: email || cached.email || "",
     photo: sanitizePhoto(cached.photo),

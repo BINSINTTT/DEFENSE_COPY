@@ -173,6 +173,7 @@ function fillProfileForm(form, profile) {
   form.firstName.value = profile.firstName || "";
   form.middleInitial.value = profile.middleInitial || "";
   form.lastName.value = profile.lastName || "";
+  if (form.nameSuffix) form.nameSuffix.value = profile.nameSuffix || "";
   form.farmName.value = profile.farmName || "";
 }
 
@@ -547,6 +548,7 @@ function initProfilePage() {
       firstName: form?.firstName.value.trim() ? form.firstName.value : current.firstName,
       middleInitial: form?.middleInitial.value.trim() ? form.middleInitial.value : current.middleInitial,
       lastName: form?.lastName.value.trim() ? form.lastName.value : current.lastName,
+      nameSuffix: form?.nameSuffix ? form.nameSuffix.value : current.nameSuffix,
       farmName: form ? form.farmName.value : current.farmName,
       email: current.email,
       photo,
@@ -680,6 +682,7 @@ function initProfilePage() {
         firstName: form.firstName.value,
         middleInitial,
         lastName: form.lastName.value,
+        nameSuffix: form.nameSuffix?.value || "",
         farmName: form.farmName.value,
       });
 

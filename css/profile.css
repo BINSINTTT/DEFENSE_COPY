@@ -471,6 +471,10 @@
   grid-template-columns: 1fr 90px 1fr;
 }
 
+.profile-form__row--name {
+  grid-template-columns: minmax(0, 1.2fr) 90px minmax(0, 1.2fr) 110px;
+}
+
 .profile-form label {
   display: grid;
   gap: 6px;
@@ -479,7 +483,8 @@
   color: var(--ink);
 }
 
-.profile-form input {
+.profile-form input,
+.profile-form select {
   background: var(--field);
   border: 1.5px solid var(--line);
   border-radius: 12px;
@@ -487,9 +492,15 @@
   min-height: 46px;
   width: 100%;
   color: var(--ink);
+  font: inherit;
 }
 
-.profile-form input:focus {
+.profile-form select {
+  cursor: pointer;
+}
+
+.profile-form input:focus,
+.profile-form select:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(217, 72, 15, 0.25);
@@ -747,6 +758,11 @@ button.profile-calendar__day.profile-calendar__day--selected:hover {
 
   .profile-form__row--three {
     grid-template-columns: minmax(0, 1fr) 3rem minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .profile-form__row--name {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 8px;
   }
 
