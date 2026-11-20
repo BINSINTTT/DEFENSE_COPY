@@ -1443,39 +1443,70 @@
   position: absolute;
   inset: 0;
   z-index: 2;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.85rem;
-  padding: 1.5rem;
+  padding: 1rem;
   border-radius: inherit;
-  background: rgba(255, 255, 255, 0.94);
+  background: #ffffff;
   color: #24552c;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  text-align: center;
 }
 
 .scan-results__loading[hidden] {
   display: none;
 }
 
-.scan-results__loading-spinner {
-  width: 2rem;
-  height: 2rem;
-  border: 3px solid #d4e8d6;
-  border-top-color: #2e7d32;
-  border-radius: 50%;
-  animation: scan-results-spin 0.8s linear infinite;
+.scan-results__loading-message {
+  margin: 0 0 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
-@keyframes scan-results-spin {
-  to { transform: rotate(360deg); }
+.scan-results__skeleton-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 1.2rem;
+}
+
+.scan-results__skeleton-card {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.85rem 0.9rem;
+  border-radius: 1rem;
+  background: #f3f1ec;
+}
+
+.scan-results__skeleton-line {
+  display: block;
+  height: 0.8rem;
+  border-radius: 0.4rem;
+  background: linear-gradient(90deg, #e1e3df 25%, #f2f4ef 50%, #e1e3df 75%);
+  background-size: 200% 100%;
+  animation: scan-results-shimmer 1.5s ease-in-out infinite;
+}
+
+.scan-results__skeleton-line--label { width: 60%; height: 0.65rem; }
+.scan-results__skeleton-line--value { width: 80%; height: 1.2rem; }
+.scan-results__skeleton-line--heading { width: 32%; height: 0.65rem; margin-bottom: 0.9rem; }
+.scan-results__skeleton-line--name { width: 5rem; max-width: 100%; }
+.scan-results__skeleton-line--track { width: 100%; }
+
+.scan-results__skeleton-row {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.1rem;
+  margin-bottom: 0.45rem;
+  padding: 0 0.55rem;
+  border-radius: 0.7rem;
+  background: #f1f1f1;
+}
+
+@keyframes scan-results-shimmer {
+  to { background-position: -200% 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .scan-results__loading-spinner { animation: none; }
+  .scan-results__skeleton-line { animation: none; }
 }
 
 .scan-results--loading {

@@ -24,7 +24,7 @@
     />
     <link rel="stylesheet" href="../css/base.css" />
     <link rel="stylesheet" href="../css/credit-plans.css" />
-    <link rel="stylesheet" href="../css/home.css?v=20261121-scan-loading" />
+    <link rel="stylesheet" href="../css/home.css?v=20261121-scan-skeleton" />
   </head>
   <body>
     <div class="viewport">
@@ -396,8 +396,18 @@
 
           <section class="scan-results" aria-labelledby="scan-results-heading">
             <div class="scan-results__loading" id="scan-results-loading" role="status" aria-live="polite" hidden>
-              <span class="scan-results__loading-spinner" aria-hidden="true"></span>
-              <span data-scan-stage>Checking tomato leaf…</span>
+              <p class="scan-results__loading-message" data-scan-stage>Checking tomato leaf…</p>
+              <div class="scan-results__skeleton" aria-hidden="true">
+                <div class="scan-results__skeleton-cards">
+                  <div class="scan-results__skeleton-card"><span class="scan-results__skeleton-line scan-results__skeleton-line--label"></span><span class="scan-results__skeleton-line scan-results__skeleton-line--value"></span></div>
+                  <div class="scan-results__skeleton-card"><span class="scan-results__skeleton-line scan-results__skeleton-line--label"></span><span class="scan-results__skeleton-line scan-results__skeleton-line--value"></span></div>
+                </div>
+                <span class="scan-results__skeleton-line scan-results__skeleton-line--heading"></span>
+                <div class="scan-results__skeleton-row"><span class="scan-results__skeleton-line scan-results__skeleton-line--name"></span><span class="scan-results__skeleton-line scan-results__skeleton-line--track"></span></div>
+                <div class="scan-results__skeleton-row"><span class="scan-results__skeleton-line scan-results__skeleton-line--name"></span><span class="scan-results__skeleton-line scan-results__skeleton-line--track"></span></div>
+                <div class="scan-results__skeleton-row"><span class="scan-results__skeleton-line scan-results__skeleton-line--name"></span><span class="scan-results__skeleton-line scan-results__skeleton-line--track"></span></div>
+                <div class="scan-results__skeleton-row"><span class="scan-results__skeleton-line scan-results__skeleton-line--name"></span><span class="scan-results__skeleton-line scan-results__skeleton-line--track"></span></div>
+              </div>
             </div>
             <div class="scan-highlight" id="scan-highlight" aria-live="polite">
               <div class="scan-highlight__metrics">
