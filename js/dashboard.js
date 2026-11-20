@@ -519,13 +519,22 @@
     const loading = activeTileNum != null && isScanInFlight(activeTileNum);
     zone?.classList.toggle("scan-upload--validating", loading);
     if (status) status.hidden = !loading;
+    const resultsLoading = document.getElementById("scan-results-loading");
+    if (resultsLoading) resultsLoading.hidden = !loading;
     section?.classList.toggle("scan-results--loading", loading);
     syncSaveInfoButton();
   }
 
   function beginScanPipeline(tileNum) {
     scanInFlightTile = tileNum;
+    setScanStage("Checking tomato leaf…");
     refreshScanLoadingUI();
+  }
+
+  function setScanStage(message) {
+    document.querySelectorAll("[data-scan-stage]").forEach((node) => {
+      node.textContent = message;
+    });
   }
 
   function endScanPipeline() {
@@ -869,6 +878,8 @@
       zone?.classList.remove("scan-upload--has-image", "scan-upload--dragover", "scan-upload--validating");
       const status = document.getElementById("scan-upload-status");
       if (status) status.hidden = true;
+      const resultsLoading = document.getElementById("scan-results-loading");
+      if (resultsLoading) resultsLoading.hidden = true;
       tileDrawer?.querySelector(".scan-results")?.classList.remove("scan-results--loading");
       activeTileImageDataUrl = null;
       setClassificationScores({}, "reset");
@@ -1188,6 +1199,7 @@
     syncSaveInfoButton,
     refreshScanLoadingUI,
     endPipeline: endScanPipeline,
+    setScanStage,
   };
 
   function tilePopoverHost(tile) {

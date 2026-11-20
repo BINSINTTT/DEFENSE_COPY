@@ -294,6 +294,7 @@
     }
 
     setClassifying(true);
+    window.TomatoInsightScan?.setScanStage?.("Isolating leaf and detecting disease…");
 
     try {
       const response = await postToClassifier(file);
@@ -336,6 +337,7 @@
       if (!stillCurrent()) return { ok: false, cancelled: true };
 
       const diseaseKey = topBarKeyFromScores(scores);
+      window.TomatoInsightScan?.setScanStage?.("Measuring symptom severity…");
       const severity = await assessSymptomSeverity(file, diseaseKey, leafMaskPng);
       if (!stillCurrent()) return { ok: false, cancelled: true };
 
@@ -353,7 +355,6 @@
           }. Use bright, even lighting, keep the full leaf in focus, and avoid shadows or glare.`
         );
       }
-      await new Promise((resolve) => setTimeout(resolve, 480));
       return { ok: true, scores, predictions, ...severity, raw: classificationResult };
     } catch (err) {
       console.error("[TomatoInsight] Disease classification error:", err);

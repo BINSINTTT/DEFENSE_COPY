@@ -24,7 +24,7 @@
     />
     <link rel="stylesheet" href="../css/base.css" />
     <link rel="stylesheet" href="../css/credit-plans.css" />
-    <link rel="stylesheet" href="../css/home.css?v=20261120-disease-card" />
+    <link rel="stylesheet" href="../css/home.css?v=20261121-scan-loading" />
   </head>
   <body>
     <div class="viewport">
@@ -350,8 +350,9 @@
               <p class="scan-upload__subtitle">or click to browse · JPG, PNG</p>
             </div>
             <img class="scan-upload__preview" id="scan-upload-preview" alt="Uploaded plant preview" hidden />
-            <p class="scan-upload__status" id="scan-upload-status" hidden aria-live="polite" aria-label="Classifying image">
+            <p class="scan-upload__status" id="scan-upload-status" hidden aria-live="polite">
               <span class="scan-upload__loader" aria-hidden="true"></span>
+              <span class="scan-upload__status-text" data-scan-stage>Checking tomato leaf…</span>
             </p>
           </div>
 
@@ -394,6 +395,10 @@
           </div>
 
           <section class="scan-results" aria-labelledby="scan-results-heading">
+            <div class="scan-results__loading" id="scan-results-loading" role="status" aria-live="polite" hidden>
+              <span class="scan-results__loading-spinner" aria-hidden="true"></span>
+              <span data-scan-stage>Checking tomato leaf…</span>
+            </div>
             <div class="scan-highlight" id="scan-highlight" aria-live="polite">
               <div class="scan-highlight__metrics">
                 <div class="scan-highlight__metric">
@@ -615,7 +620,7 @@
 
     <script src="../js/TomatoValidator/validation-config.js"></script>
     <script src="../js/DiseaseClassification/disease-classification-config.js?v=20261120-confidence20"></script>
-    <script src="../js/DiseaseClassification/disease-classification.js?v=20261120-confidence20"></script>
+    <script src="../js/DiseaseClassification/disease-classification.js?v=20261121-scan-loading"></script>
     <script src="../js/Groq/groq-config.js"></script>
     <script src="../js/Groq/groq-recommendations-client.js"></script>
     <script src="../js/TomatoValidator/TomatoLeafValidation.js?v=20261120-validator-gate"></script>
@@ -627,7 +632,7 @@
     <script src="../js/scan-calendar.js"></script>
     <script src="../js/farm-tile-emojis.js"></script>
     <script src="../js/app-page-load.js"></script>
-    <script src="../js/dashboard.js"></script>
+    <script src="../js/dashboard.js?v=20261121-scan-loading"></script>
     <script src="../js/DiseaseClassification/disease-recommendations.js?v=20261120-disease-card"></script>
     <script src="../js/farm-notifications.js"></script>
     <script src="../js/home-overview.js"></script>
