@@ -2,8 +2,6 @@
   const DEFAULTS = {
     validationProxyUrl: (window.TOMATO_INSIGHT_API_BASE || "http://127.0.0.1:8765").replace(/\/$/, "") + "/validate",
     minConfidence: 0.5,
-    /** true: block classification when the model finds no leaf. false: classify anyway and warn. */
-    strictValidation: true,
   };
 
   /**
@@ -24,7 +22,7 @@
   function isTomatoLeafClass(name) {
     if (isRejectedClass(name)) return false;
     const key = normalizeClassName(name);
-    return key === "tomatoleaf" || (key.includes("tomato") && key.includes("leaf"));
+    return key === "tomatoleaf" || key === "tomatoleaves";
   }
 
   /** Class names are compared ignoring case and punctuation. */
@@ -56,10 +54,12 @@
 
   function extractPredictions(payload) {
     const found = [];
+    const names = payload?.metadata?.classNames || payload?.metadata?.names || payload?.names || {};
 
     function append(item) {
       if (!item || typeof item !== "object") return;
-      const name = String(item.name || item.class_name || item.class || item.label || "").trim();
+      const classId = item.class_id ?? item.classId;
+      const name = String(item.name || item.class_name || item.class || item.label || names[classId] || "").trim();
       if (!name) return;
       found.push({
         name,
@@ -79,7 +79,20 @@
   }
 
   function interpretValidationPayload(payload) {
-    const flaskResult = String(payload?.result || "").trim().toLowerCase();
+    const flaskResult = normalizeClassName(payload?.result);
+    const predictions = extractPredictions(payload);
+    const explicitClass = String(payload?.detected_class || payload?.detectedClass || "").trim();
+    const rejection = [payload?.result, explicitClass, predictions[0]?.name]
+      .find((name) => name && isRejectedClass(name));
+    if (rejection) {
+      return {
+        isTomato: false,
+        confidence: normalizeConfidence(payload?.confidence),
+        detectedClass: String(rejection),
+        detectionCount: predictions.length,
+        message: "This image was identified as not a tomato leaf. Please upload a clear photo of a tomato leaf.",
+      };
+    }
     if (flaskResult === "tomatoleaf" || flaskResult === "nottomato") {
       const detectedClass = String(payload.detected_class || payload.detectedClass || "").trim() || null;
       const confidence = normalizeConfidence(payload.confidence);
@@ -97,7 +110,6 @@
       };
     }
 
-    const predictions = extractPredictions(payload);
     if (!predictions.length) {
       return {
         isTomato: false,
@@ -295,16 +307,13 @@
       let classifying = false;
       if (verdict.isTomato) {
         classifying = startClassification(file, loadToken);
-      } else if (config.strictValidation) {
-        showInvalidImageAlert(verdict.message, verdict);
-        window.TomatoInsightScan?.setClassificationScores?.({});
       } else {
-        showAlert(
-          "warning",
-          "Leaf not confirmed",
-          `${verdict.message} Running classification anyway — check the photo before trusting the result.`
-        );
-        classifying = startClassification(file, loadToken);
+        if (verdict.detectedClass && isRejectedClass(verdict.detectedClass)) {
+          showAlert("warning", "Not a tomato leaf", verdict.message);
+        } else {
+          showInvalidImageAlert(verdict.message, verdict);
+        }
+        window.TomatoInsightScan?.setClassificationScores?.({});
       }
       if (classifying) keepLoading = true;
       return { ...verdict, raw: result };
