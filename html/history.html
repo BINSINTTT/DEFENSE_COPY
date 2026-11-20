@@ -23,7 +23,7 @@
     />
     <link rel="stylesheet" href="../css/base.css" />
     <link rel="stylesheet" href="../css/page-layout.css" />
-    <link rel="stylesheet" href="../css/scan-archive.css" />
+    <link rel="stylesheet" href="../css/scan-archive.css?v=20261120-disease-card" />
     <link rel="stylesheet" href="../css/history.css" />
   </head>
   <body>
@@ -192,12 +192,10 @@
 
           <section class="scan-results" aria-labelledby="history-scan-results-heading">
             <div class="scan-highlight" id="history-scan-highlight" aria-live="polite">
-              <p class="scan-highlight__label">Detected Disease</p>
-              <h4 class="scan-highlight__disease" data-scan-detected-disease>—</h4>
               <div class="scan-highlight__metrics">
                 <div class="scan-highlight__metric">
-                  <p class="scan-highlight__metric-label">AI Confidence</p>
-                  <p class="scan-highlight__metric-value" data-scan-ai-confidence>—</p>
+                  <p class="scan-highlight__metric-label">Detected Disease</p>
+                  <p class="scan-highlight__metric-value scan-highlight__metric-value--disease" data-scan-detected-disease>—</p>
                 </div>
                 <div class="scan-highlight__metric">
                   <p class="scan-highlight__metric-label">Symptom Severity</p>
@@ -263,7 +261,7 @@
     <script src="../js/tile-plant-names.js"></script>
     <script src="../js/tile-saved-archive.js"></script>
     <script src="../js/scan-calendar.js"></script>
-    <script src="../js/DiseaseClassification/disease-recommendations.js"></script>
+    <script src="../js/DiseaseClassification/disease-recommendations.js?v=20261120-disease-card"></script>
     <script src="../js/app-page-load.js"></script>
     <script src="../js/history.js"></script>
     <script src="../js/sidebar-toggle.js"></script>

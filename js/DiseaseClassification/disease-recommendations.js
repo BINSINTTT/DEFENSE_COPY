@@ -184,7 +184,6 @@
     if (!top || !(Number(top.pct) > 0)) {
       return {
         diseaseName: "—",
-        confidenceText: "—",
         severity: "—",
         severityPct: null,
         affectedAreaText: "—",
@@ -209,7 +208,6 @@
         : "—";
     return {
       diseaseName,
-      confidenceText: `${fmtPct(top.pct)}%`,
       severity: isHealthy
         ? resolved.severityLabel && resolved.severityLabel !== "Unable to Assess"
           ? resolved.severityLabel
@@ -227,12 +225,10 @@
   function renderScanHighlight(root, scores, severityInput) {
     if (!root) return;
     const diseaseEl = root.querySelector("[data-scan-detected-disease]");
-    const confidenceEl = root.querySelector("[data-scan-ai-confidence]");
     const severityEl = root.querySelector("[data-scan-symptom-severity]");
     const areaEl = root.querySelector("[data-scan-affected-area]");
     const highlight = highlightForScores(scores, severityInput);
     if (diseaseEl) diseaseEl.textContent = highlight.diseaseName;
-    if (confidenceEl) confidenceEl.textContent = highlight.confidenceText;
     if (areaEl) areaEl.textContent = highlight.affectedAreaText;
     if (severityEl) {
       const band = highlight.severity;
