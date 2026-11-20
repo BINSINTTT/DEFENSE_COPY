@@ -17,8 +17,8 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 from groq.recommendations import fetch_care_recommendation, groq_is_configured
-from severity.assess import assess_severity, decode_image
-from severity.leaf_isolation import isolate_leaf
+from leaf_preprocessing import MODEL_DIR, isolate_leaf
+from severity.assess import assess_severity
 
 ROOT = Path(__file__).resolve().parent.parent
 HTML_DIR = ROOT / "html"
@@ -62,6 +62,11 @@ def health():
             "validation_url": ULTRALYTICS_VALIDATION_URL,
             "validation_configured": bool(ULTRALYTICS_VALIDATION_URL and ULTRALYTICS_VALIDATION_API_KEY),
             "ultralytics_configured": bool(ULTRALYTICS_DETECTION_URL and ULTRALYTICS_DETECTION_API_KEY),
+            "leaf_preprocessing": "mobile_sam_onnx",
+            "leaf_preprocessing_configured": all(
+                (MODEL_DIR / filename).is_file()
+                for filename in ("mobile_sam_encoder.onnx", "mobile_sam_decoder.onnx")
+            ),
             "severity_model": "opencv_color_segmentation",
             "severity_url": None,
             "severity_configured": True,
@@ -94,8 +99,13 @@ def _forward_ultralytics(
 
     leaf = None
     if isolate:
-        leaf, reason = isolate_leaf(decode_image(image_bytes))
+        leaf, reason = isolate_leaf(image_bytes)
         if leaf is None:
+            if reason == "leaf_model_unavailable":
+                return jsonify({
+                    "error": reason,
+                    "message": "Leaf processing is temporarily unavailable. Please try again later.",
+                }), 503
             return jsonify({
                 "error": "leaf_isolation_failed",
                 "reason": reason,

@@ -14,7 +14,6 @@ import cv2
 import numpy as np
 
 from . import thresholds as thr
-from .leaf_isolation import decode_leaf_mask
 
 UNABLE = "Unable to Assess"
 VALID_DISEASES = frozenset({"healthy", "early_blight", "tlcv", "spotted_wilt"})
@@ -154,6 +153,24 @@ def decode_image(image_bytes: bytes) -> np.ndarray | None:
     # for a desktop upload also finishes for a mobile photo.
     bgr = _apply_orientation(bgr, _jpeg_orientation(image_bytes))
     return _limit_long_edge(bgr)
+
+
+def decode_leaf_mask(mask_png: bytes, shape: tuple[int, int]) -> np.ndarray | None:
+    """Read the Python segmentation mask at the severity image's resolution."""
+    if not mask_png:
+        return None
+    mask = cv2.imdecode(np.frombuffer(mask_png, dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
+    if mask is None:
+        return None
+    height, width = shape
+    if mask.shape != shape:
+        mask_height, mask_width = mask.shape
+        if abs(mask_width / mask_height - width / height) > 0.01:
+            return None
+        mask = cv2.resize(mask, (width, height), interpolation=cv2.INTER_NEAREST)
+    binary = np.where(mask >= 128, 255, 0).astype(np.uint8)
+    fraction = cv2.countNonZero(binary) / float(height * width)
+    return binary if 0.06 <= fraction <= 0.72 else None
 
 
 def _largest_component(mask: np.ndarray) -> np.ndarray:

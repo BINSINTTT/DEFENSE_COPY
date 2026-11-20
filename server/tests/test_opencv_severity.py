@@ -19,10 +19,11 @@ from severity.assess import (  # noqa: E402
     _limit_long_edge,
     assess_severity,
     decode_image,
+    decode_leaf_mask,
     segment_leaf,
 )
 from severity.thresholds import band_for_affected_pct  # noqa: E402
-from severity.leaf_isolation import isolate_leaf  # noqa: E402
+from leaf_preprocessing import isolate_leaf  # noqa: E402
 
 
 def _encode(image: np.ndarray) -> bytes:
@@ -83,7 +84,7 @@ def test_isolated_leaf_mask_is_reused_for_severity():
     cv2.ellipse(image, (190, 130), (84, 108), 0, 0, 360, (40, 160, 40), -1)
     cv2.circle(image, (190, 110), 22, (30, 70, 140), -1)
     cv2.ellipse(image, (40, 130), (25, 75), 0, 0, 360, (40, 160, 40), -1)
-    isolated, reason = isolate_leaf(image)
+    isolated, reason = isolate_leaf(_encode(image))
     assert reason == ""
     assert isolated is not None
     assert isolated.mask[130, 190] == 255
@@ -91,6 +92,16 @@ def test_isolated_leaf_mask_is_reused_for_severity():
     result = assess_severity(_encode(image), "early_blight", leaf_mask_png=isolated.mask_png)
     assert result["measurable"] is True
     assert result["severity_pct"] > 0
+
+
+def test_smaller_python_mask_is_aligned_to_original_for_severity():
+    mask = np.zeros((683, 1024), dtype=np.uint8)
+    cv2.ellipse(mask, (512, 341), (240, 280), 0, 0, 360, 255, -1)
+    decoded = decode_leaf_mask(_encode(mask), (800, 1200))
+    assert decoded is not None
+    assert decoded.shape == (800, 1200)
+    assert decoded[400, 600] == 255
+    assert decoded[0, 0] == 0
 
 
 def test_tightly_cropped_leaf_is_still_measurable():

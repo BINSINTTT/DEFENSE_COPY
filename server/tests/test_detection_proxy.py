@@ -17,7 +17,7 @@ if str(SERVER_DIR) not in sys.path:
     sys.path.insert(0, str(SERVER_DIR))
 
 import validation_api as api  # noqa: E402
-from severity.leaf_isolation import _enhance_leaf_luminance  # noqa: E402
+from leaf_preprocessing import _enhance_leaf  # noqa: E402
 
 
 def _test_leaf_image() -> bytes:
@@ -36,13 +36,15 @@ def test_dark_leaf_enhancement_lifts_detail_without_changing_leaf_colors():
     image[mask > 0] = (25, 70, 35)
     cv2.circle(image, (90, 90), 18, (15, 28, 70), -1)
 
-    enhanced = _enhance_leaf_luminance(image, mask)
+    enhanced = _enhance_leaf(cv2.cvtColor(image, cv2.COLOR_BGR2RGB), mask > 0)
     before = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
-    after = cv2.cvtColor(enhanced, cv2.COLOR_BGR2LAB)
+    after = cv2.cvtColor(enhanced, cv2.COLOR_RGB2LAB)
     assert np.median(after[:, :, 0][mask > 0]) > np.median(before[:, :, 0][mask > 0]) + 10
+    before_hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    after_hsv = cv2.cvtColor(enhanced, cv2.COLOR_RGB2HSV)
     assert np.abs(
-        before[:, :, 1:].astype(np.int16) - after[:, :, 1:].astype(np.int16)
-    )[mask > 0].mean() < 3
+        before_hsv[:, :, :2].astype(np.int16) - after_hsv[:, :, :2].astype(np.int16)
+    )[mask > 0].mean() < 2
     assert abs(int(after[140, 100, 0]) - int(after[90, 90, 0])) >= abs(
         int(before[140, 100, 0]) - int(before[90, 90, 0])
     )

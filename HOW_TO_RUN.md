@@ -80,8 +80,9 @@ Hard refresh after code changes: **Ctrl+F5**.
 curl http://127.0.0.1:8765/health
 ```
 
-Expect JSON with `"status":"ok"`, `"ultralytics_configured":true`, and
-`"severity_configured":true` when `.env` is set correctly.
+Expect JSON with `"status":"ok"`, `"ultralytics_configured":true`,
+`"leaf_preprocessing_configured":true`, and `"severity_configured":true` when
+`.env` and the bundled segmentation files are present.
 
 ---
 
@@ -114,7 +115,7 @@ Browser scripts call these URLs to avoid CORS errors.
 ### Scan and severity flow
 
 1. The leaf validator accepts or rejects the uploaded image.
-2. Python/OpenCV separates a prominent leaf, gently improves brightness and local contrast, masks its background white, and sends that internal crop to the disease object detector. If one leaf cannot be separated reliably, the scan asks for another photo. The selected crop is not shown in the dashboard.
+2. Python uses MobileSAM through ONNX Runtime to select a prominent leaf, then Pillow/NumPy gently improve brightness and contrast and place it on white. The internal crop goes to the disease object detector; it is not shown in the dashboard. If a leaf cannot be separated reliably, the scan asks for another photo.
 3. The app takes the highest-confidence detection for each of the four displayed classes and selects the top disease. Detection confidence identifies a disease; it is not severity.
 4. The original image, selected disease, and the same leaf mask are sent to the local OpenCV assessment endpoint. OpenCV estimates `symptom pixels ÷ leaf pixels × 100`, then assigns a severity label.
 5. The scan card shows the top disease and its severity. The complete per-disease severity map is kept with the saved scan and used by disease-specific care guides.
@@ -124,6 +125,8 @@ Browser scripts call these URLs to avoid CORS errors.
 The affected-area percentage is an image-processing estimate, not a laboratory measurement or an expert-validated plant-disease severity score. The object detection endpoint requires internet access.
 
 Image enhancement changes only the detector input. OpenCV severity still measures the original photo with the isolated leaf mask. Enhancement may make dark symptoms easier to see, but its effect on model accuracy needs testing against labeled photos.
+
+The local segmentation weights are in `server/models/` under the included MobileSAM license. OpenCV is used for severity measurement, not for preclassification isolation or image enhancement.
 
 After training, put the new detector URL and API key in `server/.env` as `ULTRALYTICS_DISEASE_DETECTION_URL` and `ULTRALYTICS_DISEASE_DETECTION_API_KEY`. The detector response must include disease class names, either on each detection or through `metadata.classNames` with class IDs. The four dashboard classes are Healthy, TLCV, Early Blight, and Spotted Wilt; update the name aliases in `js/DiseaseClassification/disease-classification.js` if the new model uses different class names.
 
