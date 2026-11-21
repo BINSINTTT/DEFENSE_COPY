@@ -180,7 +180,7 @@ service cloud.firestore {
 }
 ```
 
-Demo checkout on **Credit plans** writes to the `payments` collection. Without the block above, **Pay $0 (demo)** fails with a Firestore `permission-denied` error.
+Choosing a demo pack on **Credit plans** adds credits immediately without payment. The selection is written to the legacy `payments` collection for plan history; the chosen pack is also saved with the user's credits so the current plan still updates if history cannot be written.
 
 On sign-in, the app downloads that farmer’s account, layout, tiles, and plant names from Firestore into the browser cache, then uploads changes when you save layout, scans, names, or profile. **Sign-out saves the farm to Firestore first**, then clears farm data from this browser so the next account does not see the previous user’s tiles. After log in again, the grid and saved tile info reload from `users/{uid}`.
 

@@ -150,6 +150,7 @@ function writeCache(uid, record) {
     balance: record.balance,
     signupGranted: Boolean(record.signupGranted),
     profileBonusGranted: Boolean(record.profileBonusGranted),
+    currentPackId: record.currentPackId || null,
     updatedAt: record.updatedAt || null,
   };
   localStorage.setItem(LOCAL_KEY, JSON.stringify(map));
@@ -659,17 +660,14 @@ function isFirestorePermissionDenied(err) {
 
 function demoCheckoutErrorMessage(err) {
   if (isFirestorePermissionDenied(err)) {
-    return (
-      "Firestore blocked saving the payment row. In Firebase Console → Firestore → Rules, " +
-      "add the payments block from firestore.payments.rules.txt in this project, publish, then try again."
-    );
+    return "Firestore denied the credit update. Check the users collection rules and try again.";
   }
-  return "Could not complete the demo payment. Try again.";
+  return "Could not add credits. Try again.";
 }
 
 /**
- * Adds credits after a completed checkout. Updates `users/{uid}.credits`, then
- * writes a row to the top-level `payments` collection for purchase history.
+ * Adds demo plan credits immediately. Updates `users/{uid}.credits`, then
+ * writes a selection row to the legacy `payments` collection for plan history.
  */
 export async function addTopUpCredits(amount, pack = {}) {
   const uid = currentUid();
@@ -716,12 +714,13 @@ export async function addTopUpCredits(amount, pack = {}) {
       storedAfterTopUp = {
         ...node,
         balance: node.balance + credits,
+        currentPackId: pack.packId || node.currentPackId || null,
         updatedAt: now.toISOString(),
       };
       tx.set(userRef, { credits: storedAfterTopUp }, { merge: true });
     });
   } catch (err) {
-    console.warn("[TomatoInsight] Demo checkout failed.", err);
+    console.warn("[TomatoInsight] Credit grant failed.", err);
     return {
       ok: false,
       code: "credits-unavailable",
@@ -733,7 +732,7 @@ export async function addTopUpCredits(amount, pack = {}) {
   const amountChargedPhp = Number(
     pack.amountChargedPhp ?? pack.listPricePhp ?? pack.listPriceUsd ?? 0
   );
-  const method = String(pack.method || "gcash");
+  const method = String(pack.method || "plan_selection");
   const isDemo = pack.isDemo === true;
   const paymentRecord = {
     uid,
@@ -744,7 +743,7 @@ export async function addTopUpCredits(amount, pack = {}) {
     listPricePhp,
     amountChargedPhp: Number.isFinite(amountChargedPhp) ? amountChargedPhp : listPricePhp,
     currency: "PHP",
-    status: "paid",
+    status: method === "plan_selection" ? "selected" : "paid",
     method,
     isDemo,
     createdAt: now.toISOString(),
@@ -760,7 +759,7 @@ export async function addTopUpCredits(amount, pack = {}) {
   } catch (err) {
     paymentSaved = false;
     paymentSaveError = err;
-    console.warn("[TomatoInsight] Demo payment row not saved.", err);
+    console.warn("[TomatoInsight] Plan history row not saved.", err);
   }
 
   const stored = normalizeNode(storedAfterTopUp);
@@ -854,8 +853,8 @@ function bindCreditTopUpButtons() {
     event.preventDefault();
     const packId = btn.getAttribute("data-credit-pack");
     const amount = Number.parseInt(btn.getAttribute("data-credit-topup") || "", 10);
-    if (window.TomatoInsightPayments?.openCheckout) {
-      window.TomatoInsightPayments.openCheckout(packId || amount);
+    if (window.TomatoInsightPayments?.selectPlan) {
+      window.TomatoInsightPayments.selectPlan(packId || amount);
       return;
     }
     if (Number.isFinite(amount) && amount > 0) {
@@ -922,6 +921,10 @@ window.TomatoInsightCredits = {
   stopWatchingCredits,
   getBalance() {
     return creditsLoaded ? cachedBalance : null;
+  },
+  getCurrentPackId() {
+    if (!creditsLoaded || !cachedUid) return null;
+    return readCache(cachedUid)?.currentPackId || null;
   },
   whenReady: whenCreditsReady,
   isReady: creditsAreReady,

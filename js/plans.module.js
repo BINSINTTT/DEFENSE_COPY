@@ -33,12 +33,14 @@ async function paintPaymentHistory() {
 
   try {
     const rows = await api.listPaymentsForCurrentUser();
-    const latestPaidPack = rows.find((row) =>
-      row.status === "paid" && api.packFor?.(row.packId)
+    const latestPack = rows.find((row) =>
+      (row.status === "paid" || row.status === "selected") && api.packFor?.(row.packId)
     );
+    const currentPack = api.packFor?.(window.TomatoInsightCredits?.getCurrentPackId?.())
+      || (latestPack && api.packFor(latestPack.packId));
     if (currentPlan) {
-      currentPlan.textContent = latestPaidPack
-        ? `${api.packFor(latestPaidPack.packId).packName} Plan`
+      currentPlan.textContent = currentPack
+        ? `${currentPack.packName} Plan`
         : "Free Plan";
     }
     list.replaceChildren();
@@ -57,17 +59,21 @@ async function paintPaymentHistory() {
         api.formatPhp?.(row.amountChargedPhp ?? row.amountChargedUsd ?? 0) ||
         api.formatUsd?.(row.amountChargedPhp ?? row.amountChargedUsd ?? 0) ||
         "₱0";
-      const methodLabel = row.method === "gcash" || !row.isDemo ? "GCash" : "demo";
-      meta.textContent = `${charged} ${methodLabel} · ${formatWhen(row.createdAt)}`;
+      meta.textContent = row.status === "selected"
+        ? `No charge · ${formatWhen(row.createdAt)}`
+        : `${charged} GCash · ${formatWhen(row.createdAt)}`;
       item.append(title, meta);
       list.appendChild(item);
     });
   } catch (err) {
-    console.warn("[TomatoInsight] Could not load payment history.", err);
-    if (currentPlan) currentPlan.textContent = "Plan unavailable";
+    console.warn("[TomatoInsight] Could not load plan history.", err);
+    if (currentPlan) {
+      const pack = api.packFor?.(window.TomatoInsightCredits?.getCurrentPackId?.());
+      currentPlan.textContent = pack ? `${pack.packName} Plan` : "Plan unavailable";
+    }
     if (empty) {
       empty.hidden = false;
-      empty.textContent = "Could not load purchases. Check Firestore rules for the payments collection.";
+      empty.textContent = "Could not load plan history. Check your connection and try again.";
     }
   }
 }
@@ -75,7 +81,14 @@ async function paintPaymentHistory() {
 function initPlansPage() {
   paintPlansBalance();
   paintPaymentHistory();
-  window.addEventListener("tomatoInsight:creditsChanged", paintPlansBalance);
+  window.addEventListener("tomatoInsight:creditsChanged", () => {
+    paintPlansBalance();
+    const pack = window.TomatoInsightPayments?.packFor?.(
+      window.TomatoInsightCredits?.getCurrentPackId?.()
+    );
+    const label = document.getElementById("plans-current-plan");
+    if (pack && label) label.textContent = `${pack.packName} Plan`;
+  });
   window.addEventListener("tomatoInsight:userDataReady", () => {
     paintPlansBalance();
     paintPaymentHistory();

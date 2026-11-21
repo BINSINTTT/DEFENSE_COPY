@@ -6,7 +6,7 @@ const vm = require("node:vm");
 
 const script = fs.readFileSync(path.join(__dirname, "../js/plans.module.js"), "utf8");
 
-async function planAfterPayments(rows) {
+async function planAfterPayments(rows, currentPackId = null) {
   const elements = new Map();
   const get = (id) => {
     if (!elements.has(id)) elements.set(id, {
@@ -24,7 +24,7 @@ async function planAfterPayments(rows) {
     season: { packName: "Season" },
   };
   const window = {
-    TomatoInsightCredits: { getBalance: () => 5 },
+    TomatoInsightCredits: { getBalance: () => 5, getCurrentPackId: () => currentPackId },
     TomatoInsightPayments: {
       listPaymentsForCurrentUser: async () => rows,
       packFor: (id) => packs[id] || null,
@@ -52,8 +52,12 @@ test("no completed pack purchase shows Free Plan", async () => {
 test("latest completed recognized pack becomes the current plan", async () => {
   const rows = [
     { status: "pending", packId: "season" },
-    { status: "paid", packId: "grower" },
+    { status: "selected", packId: "grower" },
     { status: "paid", packId: "starter" },
   ];
   assert.equal(await planAfterPayments(rows), "Grower Plan");
+});
+
+test("chosen pack in credit balance stays current when history is missing", async () => {
+  assert.equal(await planAfterPayments([], "season"), "Season Plan");
 });
