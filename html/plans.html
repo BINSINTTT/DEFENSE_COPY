@@ -108,6 +108,7 @@
             <header class="plans-top">
               <div>
                 <h1>Credit plans</h1>
+                <p class="plans-top__sub">Current plan: <strong id="plans-current-plan" aria-live="polite">Free Plan</strong></p>
               </div>
               <div class="plans-balance" aria-live="polite">
                 <span class="plans-balance__label">Your balance</span>
@@ -122,7 +123,7 @@
                 <li class="credit-plan">
                   <div class="credit-plan__intro">
                     <h3 class="credit-plan__name">Starter</h3>
-                    <p class="credit-plan__audience">Small farms getting started</p>
+                    <p class="credit-plan__audience">The same tools, with 10 scan credits</p>
                   </div>
                   <p class="credit-plan__price">
                     <span class="credit-plan__amount">₱49</span>
@@ -133,7 +134,8 @@
                     <li>Leaf disease classification</li>
                     <li>Farm blueprint tiles</li>
                     <li>Care recommendations</li>
-                    <li>Home dashboard access</li>
+                    <li>Scan history &amp; monitoring</li>
+                    <li>Week reminders</li>
                   </ul>
                   <button type="button" class="credit-plan__btn" data-credit-pack="starter">Choose Plan</button>
                 </li>
@@ -141,7 +143,7 @@
                   <span class="credit-plan__badge">Most Popular</span>
                   <div class="credit-plan__intro">
                     <h3 class="credit-plan__name">Grower</h3>
-                    <p class="credit-plan__audience">Busy farms with regular scans</p>
+                    <p class="credit-plan__audience">The same tools, with 25 scan credits</p>
                   </div>
                   <p class="credit-plan__price">
                     <span class="credit-plan__amount">₱99</span>
@@ -154,7 +156,6 @@
                     <li>Care recommendations</li>
                     <li>Scan history &amp; monitoring</li>
                     <li>Week reminders</li>
-                    <li>~₱4.00 per scan</li>
                   </ul>
                   <button type="button" class="credit-plan__btn credit-plan__btn--primary" data-credit-pack="grower">
                     Get started
@@ -163,7 +164,7 @@
                 <li class="credit-plan">
                   <div class="credit-plan__intro">
                     <h3 class="credit-plan__name">Season</h3>
-                    <p class="credit-plan__audience">Full-season coverage for larger plots</p>
+                    <p class="credit-plan__audience">The same tools, with 50 scan credits</p>
                   </div>
                   <p class="credit-plan__price">
                     <span class="credit-plan__amount">₱149</span>
@@ -171,10 +172,11 @@
                   </p>
                   <ul class="credit-plan__features">
                     <li>50 scan credits</li>
-                    <li>Best value per scan (~₱3)</li>
-                    <li>All Grower features</li>
-                    <li>Season-long tracking</li>
-                    <li>Priority pack size</li>
+                    <li>Leaf disease classification</li>
+                    <li>Farm blueprint tiles</li>
+                    <li>Care recommendations</li>
+                    <li>Scan history &amp; monitoring</li>
+                    <li>Week reminders</li>
                   </ul>
                   <button type="button" class="credit-plan__btn" data-credit-pack="season">Choose Plan</button>
                 </li>
@@ -183,7 +185,7 @@
 
             <section class="plans-card plans-card--history" aria-labelledby="plans-payments-title">
               <p class="plans-card__eyebrow">Purchases</p>
-              <h2 class="plans-card__title" id="plans-payments-title">Demo payment history</h2>
+              <h2 class="plans-card__title" id="plans-payments-title">Payment history</h2>
               <p class="plans-card__intro" id="plans-payment-empty">No payments yet. Complete a GCash checkout above to create one.</p>
               <ul class="plans-payment-list" id="plans-payment-list"></ul>
             </section>
@@ -194,7 +196,7 @@
       </div>
     </div>
     <script src="../js/app-page-load.js"></script>
-    <script type="module" src="../js/plans.module.js"></script>
+    <script type="module" src="../js/plans.module.js?v=20261122-current-plan"></script>
     <script src="../js/sidebar-toggle.js"></script>
   </body>
 </html>

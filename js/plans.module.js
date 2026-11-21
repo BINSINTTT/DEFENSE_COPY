@@ -29,9 +29,18 @@ async function paintPaymentHistory() {
   if (!list) return;
   const api = window.TomatoInsightPayments;
   if (!api?.listPaymentsForCurrentUser) return;
+  const currentPlan = document.getElementById("plans-current-plan");
 
   try {
     const rows = await api.listPaymentsForCurrentUser();
+    const latestPaidPack = rows.find((row) =>
+      row.status === "paid" && api.packFor?.(row.packId)
+    );
+    if (currentPlan) {
+      currentPlan.textContent = latestPaidPack
+        ? `${api.packFor(latestPaidPack.packId).packName} Plan`
+        : "Free Plan";
+    }
     list.replaceChildren();
     if (!rows.length) {
       if (empty) empty.hidden = false;
@@ -55,6 +64,7 @@ async function paintPaymentHistory() {
     });
   } catch (err) {
     console.warn("[TomatoInsight] Could not load payment history.", err);
+    if (currentPlan) currentPlan.textContent = "Plan unavailable";
     if (empty) {
       empty.hidden = false;
       empty.textContent = "Could not load purchases. Check Firestore rules for the payments collection.";
