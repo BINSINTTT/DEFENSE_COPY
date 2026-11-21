@@ -1030,6 +1030,12 @@
     const passwordInput = form.password;
     const rulesList = document.getElementById("password-rules");
 
+    [form.firstName, form.middleInitial, form.lastName].forEach((field) => {
+      field.addEventListener("input", () => {
+        field.value = field.value.replace(/\p{N}/gu, "");
+      });
+    });
+
     window.TomatoInsightAuthPassword?.bindPasswordRules?.(passwordInput, rulesList);
 
     form.addEventListener("submit", async (e) => {
@@ -1046,6 +1052,10 @@
 
       if (!firstName || !lastName) {
         showFormError(errorEl, "First name and last name are required.");
+        return;
+      }
+      if (/\p{N}/u.test(`${firstName}${middleInitial}${lastName}`)) {
+        showFormError(errorEl, "Names cannot contain numbers.");
         return;
       }
       if (middleInitial && !/^[A-Z]$/.test(middleInitial)) {

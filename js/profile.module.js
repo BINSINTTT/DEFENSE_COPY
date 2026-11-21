@@ -656,6 +656,12 @@ function initProfilePage() {
     setCalendarNote(calendarNoteFor(calendarApi()?.read?.()));
   });
 
+  [form?.firstName, form?.middleInitial, form?.lastName].forEach((field) => {
+    field?.addEventListener("input", () => {
+      field.value = field.value.replace(/\p{N}/gu, "");
+    });
+  });
+
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();
     showMessage(errorEl, null);

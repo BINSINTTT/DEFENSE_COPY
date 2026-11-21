@@ -179,13 +179,13 @@
                     <form class="profile-form" id="profile-details-form">
                       <div class="profile-form__row profile-form__row--name">
                         <label>First name
-                          <input type="text" id="profile-first-name" name="firstName" autocomplete="given-name" required />
+                          <input type="text" id="profile-first-name" name="firstName" autocomplete="given-name" pattern="[^0-9]*" required />
                         </label>
                         <label>M.I. <span class="profile-form__hint">Optional</span>
                           <input type="text" id="profile-middle-initial" name="middleInitial" autocomplete="additional-name" maxlength="1" aria-label="Middle initial (optional)" />
                         </label>
                         <label>Last name
-                          <input type="text" id="profile-last-name" name="lastName" autocomplete="family-name" required />
+                          <input type="text" id="profile-last-name" name="lastName" autocomplete="family-name" pattern="[^0-9]*" required />
                         </label>
                         <label>Suffix
                           <select id="profile-name-suffix" name="nameSuffix" autocomplete="honorific-suffix" aria-label="Name suffix (optional)">
@@ -247,7 +247,7 @@
     <script src="../js/scan-calendar.js"></script>
     <script src="../js/app-page-load.js"></script>
     <script type="module" src="../js/Firebase/firebase-auth.module.js"></script>
-    <script type="module" src="../js/profile.module.js"></script>
+    <script type="module" src="../js/profile.module.js?v=20261122-name-letters"></script>
     <script src="../js/sidebar-toggle.js"></script>
   </body>
 </html>

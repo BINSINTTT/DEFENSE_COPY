@@ -169,6 +169,9 @@ export async function saveUserProfile(uid, profile, options = {}) {
   if (!data.firstName || !data.lastName) {
     return { ok: false, error: "First name and last name are required." };
   }
+  if (/\p{N}/u.test(`${data.firstName}${data.middleInitial}${data.lastName}`)) {
+    return { ok: false, error: "Names cannot contain numbers." };
+  }
   if (data.middleInitial && !/^[A-Z]$/.test(data.middleInitial)) {
     return { ok: false, error: "Middle initial must be a single letter." };
   }
