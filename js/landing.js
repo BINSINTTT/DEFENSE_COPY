@@ -231,7 +231,7 @@
       {
         src: "../img/how-works-06-care.png",
         label: "Care",
-        alt: "Care recommendations and treatment steps after a scan",
+        alt: "Care recommendations and management actions after a scan",
       },
     ];
     if (!slots.length || slides.length < 3) return;

@@ -1,5 +1,6 @@
 (function () {
   const BAR_KEYS = ["healthy", "tlcv", "early_blight", "spotted_wilt"];
+  const VIRAL_KEYS = new Set(["tlcv", "spotted_wilt"]);
 
   const DISPLAY_NAMES = {
     healthy: "Healthy",
@@ -12,6 +13,11 @@
     "Retake the scan with one leaf in focus, evenly lit, and filling the frame.",
     "Check the plant for the listed disease symptoms before starting treatment.",
     "Use disease-specific treatment only after the affected-area severity can be assessed.",
+  ];
+  const UNASSESSABLE_VIRAL_STEPS = [
+    "Retake the scan with one leaf in focus, evenly lit, and filling the frame.",
+    "Check the whole plant and nearby plants for symptoms before deciding whether to remove it.",
+    "Manage the insects that spread this virus while its visible severity is being assessed.",
   ];
 
   /** Longer titles for the scan highlight card. */
@@ -292,36 +298,35 @@
   function spottedWiltTreatment() {
     return {
       summary:
-        "Tomato spotted wilt virus (TSWV) is spread by thrips and causes bronze spots, rings, and stunted growth.",
+        "Suspected tomato spotted wilt virus (TSWV) has no cure. Thrips spread it between plants; this leaf's visible severity does not confirm whole-plant infection.",
       actionSteps: [
-        "Remove and destroy infected plants immediately to limit spread.",
-        "Control thrips with insecticidal soap or approved products; focus on undersides of leaves.",
-        "Use reflective mulch early in the season to repel thrips.",
-        "Remove weeds near the farm that host thrips and the virus.",
-        "Do not replant tomatoes in the same bed without thrips management.",
+        "Check the whole plant and confirm the suspected virus before removing it.",
+        "Monitor and manage thrips to protect nearby plants; follow locally approved product labels.",
+        "Remove weeds around the plot that can host thrips and the virus.",
       ],
       severitySteps: {
         Mild: [
-          "Remove and destroy the infected plant to limit virus spread.",
-          "Control thrips with insecticidal soap or approved products; focus on leaf undersides.",
+          "Check the whole plant and nearby plants; confirm the suspected virus before removing a plant.",
+          "Monitor for thrips and manage them to protect nearby plants, following local product labels.",
           "Remove nearby weeds that can host thrips and the virus.",
         ],
         Moderate: [
-          "Remove and destroy the infected plant promptly to limit virus spread.",
-          "Control thrips with insecticidal soap or approved products; focus on leaf undersides.",
+          "Check the whole plant and seek confirmation promptly; consider removing it if infection is confirmed, especially when young.",
+          "Monitor and manage thrips to limit spread to nearby plants, following local product labels.",
           "Remove nearby weeds that can host thrips and the virus.",
-          "Use reflective mulch early in the season to repel thrips.",
+          "Inspect neighboring tomato plants for new symptoms.",
         ],
         Severe: [
-          "Remove and destroy the infected plant immediately to limit virus spread.",
-          "Control thrips with insecticidal soap or approved products; focus on leaf undersides.",
+          "Seek confirmation urgently; if infection is confirmed, remove the whole plant to limit virus spread.",
+          "Monitor and manage thrips to protect nearby plants, following local product labels.",
           "Remove nearby weeds that can host thrips and the virus.",
-          "Do not replant tomatoes in the same bed without thrips management.",
+          "Inspect neighboring tomato plants promptly.",
         ],
       },
       preventionTips: [
+        "Thrips carry tomato spotted wilt virus from infected plants to healthy plants; monitor and manage them.",
         "Use TSWV-resistant tomato varieties when available.",
-        "Install fine mesh row covers until plants flower, if practical.",
+        "Use healthy transplants and remove weeds that may host thrips.",
       ],
     };
   }
@@ -329,36 +334,33 @@
   function yellowLeafCurlTreatment() {
     return {
       summary:
-        "Tomato yellow leaf curl virus (TYLCV) causes upward curling, yellowing, and reduced fruit set; whiteflies spread it.",
+        "Suspected tomato leaf curl virus has no cure. Whiteflies spread leaf curl viruses between plants; this leaf's visible severity does not confirm whole-plant infection.",
       actionSteps: [
-        "Remove severely infected plants to protect nearby healthy ones.",
-        "Control whiteflies with yellow sticky traps and approved insecticides.",
-        "Spray undersides of leaves where whiteflies feed; repeat as directed.",
-        "Remove solanaceous weeds (tomato relatives) around the field.",
-        "Avoid bringing new plants from unknown sources into the farm.",
+        "Check the whole plant and confirm the suspected virus before removing it.",
+        "Monitor and manage whiteflies to protect nearby plants; follow locally approved product labels.",
+        "Remove nearby weeds that can host whiteflies and the virus.",
       ],
       severitySteps: {
         Mild: [
-          "Control whiteflies with yellow sticky traps and approved insecticides.",
-          "Spray leaf undersides where whiteflies feed; repeat as directed.",
-          "Inspect new growth twice weekly and rescan if the affected area increases.",
+          "Check new growth and nearby plants; confirm the suspected virus before removing a plant.",
+          "Monitor and manage whiteflies, especially under leaves, to protect nearby plants.",
+          "Rescan if visible symptoms increase.",
         ],
         Moderate: [
-          "Control whiteflies with yellow sticky traps and approved insecticides.",
-          "Spray leaf undersides where whiteflies feed; repeat as directed.",
-          "Remove solanaceous weeds around the field.",
-          "Inspect nearby plants for curling, yellowing, and whitefly activity.",
+          "Check the whole plant and seek confirmation promptly; consider removing confirmed infected plants when infection is limited in the plot.",
+          "Monitor and manage whiteflies to protect nearby plants, following local product labels.",
+          "Remove nearby weeds and inspect neighboring plants for curling and yellowing.",
         ],
         Severe: [
-          "Remove the severely infected plant to protect nearby healthy plants.",
-          "Control whiteflies with yellow sticky traps and approved insecticides.",
-          "Spray leaf undersides where whiteflies feed; repeat as directed.",
-          "Remove solanaceous weeds around the field.",
+          "Seek confirmation urgently; if infection is confirmed, remove the whole plant to protect nearby plants.",
+          "Monitor and manage whiteflies to limit spread, following local product labels.",
+          "Remove nearby weeds and inspect neighboring tomato plants promptly.",
         ],
       },
       preventionTips: [
-        "Plant TYLCV-tolerant varieties where the virus is common.",
-        "Inspect new growth twice weekly for curling and whitefly activity.",
+        "Whiteflies carry tomato leaf curl virus from infected plants to healthy plants; monitor and manage them.",
+        "Use healthy transplants and leaf curl virus-resistant varieties where available.",
+        "Inspect new growth and nearby plants for curling, yellowing, and whitefly activity.",
       ],
     };
   }
@@ -423,10 +425,11 @@
     }
 
     const severity = diseaseSeverityLabel(diseaseName, symptomPct, resolved.severityLabel);
+    const isViral = VIRAL_KEYS.has(barKey);
     let urgencyNote;
     const actionSteps = [
       ...(!isHealthy && severity === "Unable to Assess"
-        ? UNASSESSABLE_STEPS
+        ? isViral ? UNASSESSABLE_VIRAL_STEPS : UNASSESSABLE_STEPS
         : base.severitySteps?.[severity] || base.actionSteps),
     ];
     const isCriticalExtent = !isHealthy && severity === "Severe";
@@ -435,13 +438,13 @@
       urgencyNote = "Keep up regular monitoring to catch problems early.";
     } else if (severity === "Unable to Assess") {
       urgencyNote =
-        "Severity could not be measured from this image. Confirm symptoms on the plant before treating; follow disease-specific steps cautiously.";
+        "Severity could not be measured from this image. Confirm symptoms on the plant before choosing disease-specific actions.";
     } else if (severity === "Severe") {
-      urgencyNote = "Severe: follow the urgent care steps now.";
+      urgencyNote = `Severe: follow the urgent ${isViral ? "management" : "care"} steps now.`;
     } else if (severity === "Moderate") {
-      urgencyNote = "Moderate: begin the care steps this week.";
+      urgencyNote = `Moderate: begin the ${isViral ? "management" : "care"} steps this week.`;
     } else if (severity === "Mild") {
-      urgencyNote = "Mild: use the early care steps and monitor closely.";
+      urgencyNote = `Mild: use the early ${isViral ? "management" : "care"} steps and monitor closely.`;
     } else {
       urgencyNote = "Confirm symptoms on the plant before treating.";
     }
@@ -527,6 +530,13 @@
       affectedAreaPct: builtIn.affectedAreaPct,
       confidencePercent: builtIn.confidencePercent,
       recommendationBasis: "affected_area_severity",
+      ...(VIRAL_KEYS.has(top.barKey) ? {
+        urgencyNote: builtIn.urgencyNote,
+        summary: builtIn.summary,
+        actionSteps: builtIn.actionSteps,
+        preventionTips: builtIn.preventionTips,
+        isCriticalRemoval: builtIn.isCriticalRemoval,
+      } : {}),
     }];
   }
 
@@ -548,7 +558,8 @@
   function renderGuideSectionHtml(guide, index, total) {
     if (!guide) return "";
     const isHealthy = isHealthyGuide(guide);
-    const stepsTitle = isHealthy ? "What to do" : "Treatment steps";
+    const isViral = VIRAL_KEYS.has(guide.barKey) || /(?:leaf\s*curl|spotted\s*wilt)/i.test(guide.diseaseName || "");
+    const stepsTitle = isHealthy ? "What to do" : isViral ? "Management actions" : "Treatment steps";
     const severity = String(guide.severity || "").trim();
     const eyebrow = isHealthy
       ? "Healthy care plan"
@@ -571,7 +582,7 @@
         ${renderList(guide.actionSteps, "No steps listed.")}
         ${
           guide.preventionTips?.length
-            ? `<h5 class="scan-treatment-panel__subtitle">Prevention</h5>${renderList(guide.preventionTips, "")}`
+            ? `<h5 class="scan-treatment-panel__subtitle">${isViral ? "Prevent spread to other plants" : "Prevention"}</h5>${renderList(guide.preventionTips, "")}`
             : ""
         }
       </section>
@@ -583,7 +594,7 @@
     if (!list.length) return "";
     return (
       list.map((guide, index) => renderGuideSectionHtml(guide, index, list.length)).join("") +
-      `<p class="scan-treatment-panel__disclaimer">Guidance only — verify on the plant before treating.</p>`
+      `<p class="scan-treatment-panel__disclaimer">Guidance only — confirm the diagnosis before removing a plant or applying products.</p>`
     );
   }
 
@@ -846,7 +857,7 @@
     const areaRaw = resolved?.affectedAreaPct ?? resolved?.severityPct;
     const area = areaRaw == null ? NaN : Number(areaRaw);
     const areaKey = Number.isFinite(area) && area >= 0 ? String(Math.round(area * 10) / 10) : "na";
-    return `${scoresKey(scores)}|severity:${severity}|affected:${areaKey}`;
+    return `management-v1|${scoresKey(scores)}|severity:${severity}|affected:${areaKey}`;
   }
 
   function stillShowing(key, tile) {

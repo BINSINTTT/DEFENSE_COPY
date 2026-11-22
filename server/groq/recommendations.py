@@ -17,11 +17,17 @@ GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 DEFAULT_MODEL = "openai/gpt-oss-20b"
 
 BAR_KEYS = ("healthy", "tlcv", "early_blight", "spotted_wilt")
+VIRAL_KEYS = frozenset(("tlcv", "spotted_wilt"))
 
 UNASSESSABLE_STEPS = [
     "Retake the scan with one leaf in focus, evenly lit, and filling the frame.",
     "Check the plant for the listed disease symptoms before starting treatment.",
     "Use disease-specific treatment only after the affected-area severity can be assessed.",
+]
+UNASSESSABLE_VIRAL_STEPS = [
+    "Retake the scan with one leaf in focus, evenly lit, and filling the frame.",
+    "Check the whole plant and nearby plants for symptoms before deciding whether to remove it.",
+    "Manage the insects that spread this virus while its visible severity is being assessed.",
 ]
 
 DISPLAY_NAMES = {
@@ -71,74 +77,70 @@ DISEASE_FACTS: dict[str, dict[str, Any]] = {
     },
     "spotted_wilt": {
         "summary": (
-            "Tomato spotted wilt virus (TSWV) is spread by thrips and causes bronze spots, "
-            "rings, and stunted growth."
+            "Suspected tomato spotted wilt virus (TSWV) has no cure. Thrips spread it between "
+            "plants; this leaf's visible severity does not confirm whole-plant infection."
         ),
         "action_steps": [
-            "Remove and destroy infected plants immediately to limit spread.",
-            "Control thrips with insecticidal soap or approved products; focus on undersides of leaves.",
-            "Use reflective mulch early in the season to repel thrips.",
-            "Remove weeds near the farm that host thrips and the virus.",
-            "Do not replant tomatoes in the same bed without thrips management.",
+            "Check the whole plant and confirm the suspected virus before removing it.",
+            "Monitor and manage thrips to protect nearby plants; follow locally approved product labels.",
+            "Remove weeds around the plot that can host thrips and the virus.",
         ],
         "severity_steps": {
             "Mild": [
-                "Remove and destroy the infected plant to limit virus spread.",
-                "Control thrips with insecticidal soap or approved products; focus on leaf undersides.",
+                "Check the whole plant and nearby plants; confirm the suspected virus before removing a plant.",
+                "Monitor for thrips and manage them to protect nearby plants, following local product labels.",
                 "Remove nearby weeds that can host thrips and the virus.",
             ],
             "Moderate": [
-                "Remove and destroy the infected plant promptly to limit virus spread.",
-                "Control thrips with insecticidal soap or approved products; focus on leaf undersides.",
+                "Check the whole plant and seek confirmation promptly; consider removing it if infection is confirmed, especially when young.",
+                "Monitor and manage thrips to limit spread to nearby plants, following local product labels.",
                 "Remove nearby weeds that can host thrips and the virus.",
-                "Use reflective mulch early in the season to repel thrips.",
+                "Inspect neighboring tomato plants for new symptoms.",
             ],
             "Severe": [
-                "Remove and destroy the infected plant immediately to limit virus spread.",
-                "Control thrips with insecticidal soap or approved products; focus on leaf undersides.",
+                "Seek confirmation urgently; if infection is confirmed, remove the whole plant to limit virus spread.",
+                "Monitor and manage thrips to protect nearby plants, following local product labels.",
                 "Remove nearby weeds that can host thrips and the virus.",
-                "Do not replant tomatoes in the same bed without thrips management.",
+                "Inspect neighboring tomato plants promptly.",
             ],
         },
         "prevention_tips": [
+            "Thrips carry tomato spotted wilt virus from infected plants to healthy plants; monitor and manage them.",
             "Use TSWV-resistant tomato varieties when available.",
-            "Install fine mesh row covers until plants flower, if practical.",
+            "Use healthy transplants and remove weeds that may host thrips.",
         ],
     },
     "tlcv": {
         "summary": (
-            "Tomato yellow leaf curl virus (TYLCV) causes upward curling, yellowing, and reduced "
-            "fruit set; whiteflies spread it."
+            "Suspected tomato leaf curl virus has no cure. Whiteflies spread leaf curl viruses "
+            "between plants; this leaf's visible severity does not confirm whole-plant infection."
         ),
         "action_steps": [
-            "Remove severely infected plants to protect nearby healthy ones.",
-            "Control whiteflies with yellow sticky traps and approved insecticides.",
-            "Spray undersides of leaves where whiteflies feed; repeat as directed.",
-            "Remove solanaceous weeds (tomato relatives) around the field.",
-            "Avoid bringing new plants from unknown sources into the farm.",
+            "Check the whole plant and confirm the suspected virus before removing it.",
+            "Monitor and manage whiteflies to protect nearby plants; follow locally approved product labels.",
+            "Remove nearby weeds that can host whiteflies and the virus.",
         ],
         "severity_steps": {
             "Mild": [
-                "Control whiteflies with yellow sticky traps and approved insecticides.",
-                "Spray leaf undersides where whiteflies feed; repeat as directed.",
-                "Inspect new growth twice weekly and rescan if the affected area increases.",
+                "Check new growth and nearby plants; confirm the suspected virus before removing a plant.",
+                "Monitor and manage whiteflies, especially under leaves, to protect nearby plants.",
+                "Rescan if visible symptoms increase.",
             ],
             "Moderate": [
-                "Control whiteflies with yellow sticky traps and approved insecticides.",
-                "Spray leaf undersides where whiteflies feed; repeat as directed.",
-                "Remove solanaceous weeds around the field.",
-                "Inspect nearby plants for curling, yellowing, and whitefly activity.",
+                "Check the whole plant and seek confirmation promptly; consider removing confirmed infected plants when infection is limited in the plot.",
+                "Monitor and manage whiteflies to protect nearby plants, following local product labels.",
+                "Remove nearby weeds and inspect neighboring plants for curling and yellowing.",
             ],
             "Severe": [
-                "Remove the severely infected plant to protect nearby healthy plants.",
-                "Control whiteflies with yellow sticky traps and approved insecticides.",
-                "Spray leaf undersides where whiteflies feed; repeat as directed.",
-                "Remove solanaceous weeds around the field.",
+                "Seek confirmation urgently; if infection is confirmed, remove the whole plant to protect nearby plants.",
+                "Monitor and manage whiteflies to limit spread, following local product labels.",
+                "Remove nearby weeds and inspect neighboring tomato plants promptly.",
             ],
         },
         "prevention_tips": [
-            "Plant TYLCV-tolerant varieties where the virus is common.",
-            "Inspect new growth twice weekly for curling and whitefly activity.",
+            "Whiteflies carry tomato leaf curl virus from infected plants to healthy plants; monitor and manage them.",
+            "Use healthy transplants and leaf curl virus-resistant varieties where available.",
+            "Inspect new growth and nearby plants for curling, yellowing, and whitefly activity.",
         ],
     },
     "healthy": {
@@ -276,6 +278,8 @@ def _build_user_message(
             "Classification scores select the disease identity only. Never use them to select, scale, order, or word treatment actions.",
             "Select urgency and care actions only from severity_band and symptom_severity_percent.",
             "If severity_band is Unable to Assess, give cautious general guidance without inventing an extent percentage.",
+            "For tlcv and spotted_wilt, call the advice management actions: viral infection has no cure. Name whiteflies for tlcv and thrips for spotted_wilt as the insects to manage to protect other plants.",
+            "An image is a suspected diagnosis. Visible severity on one leaf is not whole-plant infection or transmission risk. Do not tell a grower to remove a plant without confirmation.",
             "Keep actionSteps ordered and practical for a smallholder tomato farm.",
         ],
     }
@@ -296,6 +300,10 @@ Respond with ONLY valid JSON (no markdown fences) matching this schema:
 Classification scores identify the disease only. Base urgency and care actions exclusively on
 severity_band and symptom_severity_percent. Do not let confidence change the recommendation.
 Do not contradict trusted_facts.
+For tlcv and spotted_wilt, state that viral infection has no cure. Describe actions as
+management to limit spread, never as a cure. Whiteflies spread leaf curl virus;
+thrips spread spotted wilt. A photo is a suspected diagnosis: do not claim lab
+confirmation or order plant removal solely from visible severity on one leaf.
 Do not mention extension services or extension offices."""
 
 
@@ -322,9 +330,13 @@ def _normalize_guide(
     return {
         "diseaseName": DISPLAY_NAMES.get(bar_key, bar_key),
         "urgencyNote": severity_guide["urgencyNote"],
-        "summary": str(data.get("summary") or facts["summary"]).strip(),
+        "summary": (
+            facts["summary"] if bar_key in VIRAL_KEYS else str(data.get("summary") or facts["summary"]).strip()
+        ),
         "actionSteps": severity_guide["actionSteps"],
-        "preventionTips": prevention,
+        "preventionTips": (
+            list(facts["prevention_tips"]) if bar_key in VIRAL_KEYS else prevention
+        ),
         "isCriticalRemoval": severity_guide["isCriticalRemoval"],
         "severity": severity_guide["severity"],
         "severityPct": severity_guide["severityPct"],
@@ -345,7 +357,7 @@ def _fallback_guide(
     severity = _severity_label(bar_key, symptom_pct, severity_label)
     severity_steps = facts.get("severity_steps") or {}
     action_steps = (
-        list(UNASSESSABLE_STEPS)
+        list(UNASSESSABLE_VIRAL_STEPS if bar_key in VIRAL_KEYS else UNASSESSABLE_STEPS)
         if not is_healthy and severity == "Unable to Assess"
         else list(severity_steps.get(severity) or facts["action_steps"])
     )
@@ -357,14 +369,14 @@ def _fallback_guide(
     elif severity == "Unable to Assess":
         urgency = (
             "Severity could not be measured from this image. Confirm symptoms on the plant "
-            "before treating; follow disease-specific steps cautiously."
+            "before choosing disease-specific actions."
         )
     elif severity == "Severe":
-        urgency = f"Severe{extent}: follow the urgent care steps now."
+        urgency = f"Severe{extent}: follow the urgent {'management' if bar_key in VIRAL_KEYS else 'care'} steps now."
     elif severity == "Moderate":
-        urgency = f"Moderate{extent}: begin the care steps this week."
+        urgency = f"Moderate{extent}: begin the {'management' if bar_key in VIRAL_KEYS else 'care'} steps this week."
     else:
-        urgency = f"Mild{extent}: use the early care steps and monitor closely."
+        urgency = f"Mild{extent}: use the early {'management' if bar_key in VIRAL_KEYS else 'care'} steps and monitor closely."
 
     return {
         "diseaseName": DISPLAY_NAMES.get(bar_key, bar_key),
