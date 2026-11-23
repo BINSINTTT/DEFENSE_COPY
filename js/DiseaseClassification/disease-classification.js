@@ -18,7 +18,7 @@
     { barKey: "healthy", names: ["healthy", "tomatohealthy"] },
     {
       barKey: "tlcv",
-      names: ["yellowleafcurlvirus", "tomatoyellowleafcurlvirus", "yellow leaf curl virus", "tlcv", "yellow leaf curl"],
+      names: ["yellowleafcurlvirus", "tomatoyellowleafcurlvirus", "yellow leaf curl virus", "tomatoleafcurlvirus", "tomatoleafcurlvirustlcv", "tomato leaf curl virus", "tlcv", "yellow leaf curl"],
     },
     {
       barKey: "early_blight",

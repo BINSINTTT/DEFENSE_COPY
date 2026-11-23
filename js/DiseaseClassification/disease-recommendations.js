@@ -4,7 +4,7 @@
 
   const DISPLAY_NAMES = {
     healthy: "Healthy",
-    tlcv: "Yellow leaf curl virus",
+    tlcv: "Tomato Leaf Curl Virus (TLCV)",
     early_blight: "Early blight",
     spotted_wilt: "Spotted wilt",
   };
@@ -564,8 +564,11 @@
 
   function renderGuideSectionHtml(guide, index, total) {
     if (!guide) return "";
+    const diseaseName = guide.barKey === "tlcv" || /(?:yellow\s*leaf\s*curl|tomato\s*leaf\s*curl|\btlcv\b)/i.test(guide.diseaseName || "")
+      ? DISPLAY_NAMES.tlcv
+      : guide.diseaseName;
     const isHealthy = isHealthyGuide(guide);
-    const isViral = VIRAL_KEYS.has(guide.barKey) || /(?:leaf\s*curl|spotted\s*wilt)/i.test(guide.diseaseName || "");
+    const isViral = VIRAL_KEYS.has(guide.barKey) || /(?:leaf\s*curl|spotted\s*wilt)/i.test(diseaseName || "");
     const stepsTitle = isHealthy ? "What to do" : isViral ? "Management actions" : "Treatment steps";
     const severity = String(guide.severity || "").trim();
     const eyebrow = index > 0
@@ -581,7 +584,7 @@
       <section class="scan-treatment-panel__disease"${index > 0 ? ' data-secondary="true"' : ""}>
         ${eyebrow ? `<p class="scan-treatment-panel__eyebrow">${escapeHtml(eyebrow)}</p>` : ""}
         <h4 class="scan-treatment-panel__title">${escapeHtml(
-          guide.diseaseName || (isHealthy ? "Healthy" : "")
+          diseaseName || (isHealthy ? "Healthy" : "")
         )}</h4>
         ${index > 0 ? `<p class="scan-treatment-panel__summary">This is another model detection, not a confirmed second diagnosis.${severity === "Unable to Assess" ? " Its severity was not assessed." : ""} Check this leaf and nearby plants before acting.</p>` : ""}
         <p class="scan-treatment-panel__summary">${escapeHtml(guide.summary)}</p>

@@ -78,6 +78,16 @@ test("the care panel omits the severity percentage banner", () => {
   assert.doesNotMatch(html, /scan-treatment-panel__urgency/);
 });
 
+test("TLCV intervention uses the Tomato Leaf Curl Virus label", () => {
+  const recs = recommendations();
+  const guide = recs.guidesForScores({ tlcv: 88 }, 35)[0];
+  assert.equal(guide.diseaseName, "Tomato Leaf Curl Virus (TLCV)");
+  const oldSavedGuide = { ...guide, diseaseName: "Tomato Yellow Leaf Curl Virus" };
+  const html = recs.renderGuidesHtml([oldSavedGuide]);
+  assert.match(html, /Tomato Leaf Curl Virus \(TLCV\)/);
+  assert.doesNotMatch(html, /Tomato Yellow Leaf Curl Virus/);
+});
+
 test("a secondary Spotted Wilt detection gets its own management and prevention", () => {
   const recs = recommendations();
   const scores = { healthy: 31, tlcv: 0, early_blight: 0, spotted_wilt: 23 };

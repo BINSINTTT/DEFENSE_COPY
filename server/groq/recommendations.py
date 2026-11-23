@@ -32,7 +32,7 @@ UNASSESSABLE_VIRAL_STEPS = [
 
 DISPLAY_NAMES = {
     "healthy": "Healthy",
-    "tlcv": "Yellow leaf curl virus",
+    "tlcv": "Tomato Leaf Curl Virus (TLCV)",
     "early_blight": "Early blight",
     "spotted_wilt": "Spotted wilt",
 }

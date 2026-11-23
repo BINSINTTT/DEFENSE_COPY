@@ -27,6 +27,7 @@ def test_high_confidence_with_small_affected_area_uses_mild_plan(monkeypatch):
 
     guide = recommendation(99, 12)
 
+    assert guide["diseaseName"] == "Tomato Leaf Curl Virus (TLCV)"
     assert guide["severity"] == "Mild"
     assert guide["affectedAreaPct"] == 12
     assert guide["recommendationBasis"] == "affected_area_severity"

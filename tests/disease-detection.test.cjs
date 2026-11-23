@@ -56,6 +56,18 @@ test("unrecognized detector classes do not become a disease score", () => {
   assert.equal(classifier.topBarKeyFromScores(scores), "");
 });
 
+test("TLCV accepts both the old model class and the new display name", () => {
+  const classifier = loadClassifier();
+  assert.equal(
+    classifier.mapToBarScores([{ name: "YellowLeafCurlVirus", confidence: 0.8 }]).tlcv,
+    80
+  );
+  assert.equal(
+    classifier.mapToBarScores([{ name: "Tomato Leaf Curl Virus (TLCV)", confidence: 0.8 }]).tlcv,
+    80
+  );
+});
+
 test("one detector request is followed by OpenCV assessment, with no specialist request", async () => {
   const calls = [];
   const classifier = loadClassifier(async (url, options) => {
