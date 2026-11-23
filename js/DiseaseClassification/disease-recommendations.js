@@ -974,20 +974,7 @@
     if (!btn) return;
     btn.hidden = !enabled;
     btn.disabled = !enabled;
-    const top = lastTop;
-    const resolved = resolveSeverityMeta(lastScores, lastSeverityMeta ?? lastSeverityPct, top);
-    const severity = String(resolved?.severityLabel || "");
-    if (enabled && top?.barKey !== "healthy" && severity === "Severe") {
-      btn.textContent = "View Intervention";
-    } else if (enabled && top?.barKey !== "healthy" && severity === "Moderate") {
-      btn.textContent = "View Moderate care plan";
-    } else if (enabled && top?.barKey !== "healthy" && severity === "Mild") {
-      btn.textContent = "View Mild care plan";
-    } else if (enabled && severity === "Unable to Assess") {
-      btn.textContent = "View general care guidance";
-    } else {
-      btn.textContent = "View care recommendations";
-    }
+    btn.textContent = "View Intervention";
     if (!enabled) clearPanelDisplay();
   }
 

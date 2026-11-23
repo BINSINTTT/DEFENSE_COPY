@@ -13,11 +13,36 @@ function recommendations(options = {}) {
   const window = options.window || {};
   vm.runInNewContext(source, {
     window,
-    document: { getElementById: () => null },
+    document: options.document || { getElementById: () => null },
     localStorage: options.localStorage,
   });
   return window.TomatoInsightRecommendations;
 }
+
+test("the scan button always says View Intervention for detected results", () => {
+  const button = { addEventListener() {}, setAttribute() {} };
+  const document = {
+    getElementById(id) {
+      return id === "scan-treatment-btn" ? button : null;
+    },
+  };
+  const recs = recommendations({ document });
+  for (const [scores, severityLabel, affectedAreaPct] of [
+    [{ healthy: 85 }, "Healthy", 0],
+    [{ early_blight: 85 }, "Mild", 20],
+    [{ early_blight: 85 }, "Moderate", 50],
+    [{ early_blight: 85 }, "Severe", 80],
+    [{ early_blight: 85 }, "Unable to Assess", null],
+  ]) {
+    recs.onScoresUpdated(scores, 19, {
+      severityLabel,
+      affectedAreaPct,
+      severityPct: affectedAreaPct,
+      severityAssessable: affectedAreaPct != null,
+    });
+    assert.equal(button.textContent, "View Intervention");
+  }
+});
 
 for (const [disease, insect] of [["tlcv", "whiteflies"], ["spotted_wilt", "thrips"]]) {
   test(`${disease} uses severity-based management and names ${insect}`, () => {

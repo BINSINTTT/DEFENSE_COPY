@@ -503,18 +503,7 @@
       treatmentBtn.hidden = false;
       treatmentBtn.disabled = false;
       treatmentBtn.setAttribute("aria-expanded", "false");
-      const highlight = window.TomatoInsightRecommendations?.highlightForScores?.(scores, severityPct);
-      const severity = String(highlight?.severity || "");
-      treatmentBtn.textContent =
-        top.barKey !== "healthy" && severity === "Severe"
-          ? "View Intervention"
-          : top.barKey !== "healthy" && severity === "Moderate"
-            ? "View Moderate care plan"
-            : top.barKey !== "healthy" && severity === "Mild"
-              ? "View Mild care plan"
-              : severity === "Unable to Assess"
-                ? "View general care guidance"
-                : "View care recommendations";
+      treatmentBtn.textContent = "View Intervention";
       renderTreatmentPanel(top, tileNum, scores, severityPct);
       if (treatmentPanel) treatmentPanel.hidden = true;
     }
