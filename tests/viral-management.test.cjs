@@ -9,11 +9,12 @@ const source = fs.readFileSync(
   "utf8"
 );
 
-function recommendations() {
-  const window = {};
+function recommendations(options = {}) {
+  const window = options.window || {};
   vm.runInNewContext(source, {
     window,
     document: { getElementById: () => null },
+    localStorage: options.localStorage,
   });
   return window.TomatoInsightRecommendations;
 }
@@ -37,3 +38,112 @@ for (const [disease, insect] of [["tlcv", "whiteflies"], ["spotted_wilt", "thrip
     assert.match(guides[2].actionSteps[0], /if infection is confirmed/i);
   });
 }
+
+test("the care panel omits the severity percentage banner", () => {
+  const recs = recommendations();
+  const guide = {
+    ...recs.treatmentForBarKey("early_blight", 91, 86.6),
+    barKey: "early_blight",
+    pct: 91,
+  };
+  const html = recs.renderGuidesHtml([guide]);
+  assert.match(html, /Intervention/);
+  assert.match(html, /Treatment steps/);
+  assert.doesNotMatch(html, /86\.6% affected/);
+  assert.doesNotMatch(html, /scan-treatment-panel__urgency/);
+});
+
+test("a secondary Spotted Wilt detection gets its own management and prevention", () => {
+  const recs = recommendations();
+  const scores = { healthy: 31, tlcv: 0, early_blight: 0, spotted_wilt: 23 };
+  const severity = {
+    severityLabel: "Healthy",
+    severityPct: 0,
+    affectedAreaPct: 0,
+    severityAssessable: true,
+  };
+  const guides = recs.guidesForScores(scores, severity);
+
+  assert.equal(guides.length, 2);
+  assert.equal(guides[0].barKey, "healthy");
+  assert.match(guides[0].summary, /does not rule out the other model detection/i);
+  assert.equal(guides[1].barKey, "spotted_wilt");
+  assert.equal(guides[1].severity, "Unable to Assess");
+  assert.equal(guides[1].severityPct, null);
+  assert.match(guides[1].preventionTips.join(" "), /thrips/i);
+
+  const html = recs.renderGuidesHtml(guides);
+  assert.match(html, /Additional model detection · 23% confidence/);
+  assert.match(html, /not a confirmed second diagnosis/);
+  assert.match(html, /Its severity was not assessed/);
+  assert.match(html, /Management actions/);
+  assert.match(html, /Prevent spread to other plants/);
+});
+
+test("secondary severity is used only when measured for that disease", () => {
+  const recs = recommendations();
+  const scores = { healthy: 31, tlcv: 0, early_blight: 0, spotted_wilt: 23 };
+  const withoutSecondarySeverity = {
+    severityLabel: "Healthy",
+    severityPct: 0,
+    affectedAreaPct: 0,
+    severityAssessable: true,
+  };
+  const withSecondarySeverity = {
+    severityLabel: "Healthy",
+    severityPct: 0,
+    affectedAreaPct: 0,
+    severityAssessable: true,
+    diseaseSeverities: {
+      spotted_wilt: {
+        severityLabel: "Mild",
+        severityPct: 18,
+        affectedAreaPct: 18,
+        severityAssessable: true,
+      },
+    },
+  };
+  const guides = recs.guidesForScores(scores, withSecondarySeverity);
+  assert.equal(guides[1].severity, "Mild");
+  assert.equal(guides[1].severityPct, 18);
+  assert.notEqual(
+    recs.recommendationKeyFor(scores, withSecondarySeverity),
+    recs.recommendationKeyFor(scores, withoutSecondarySeverity)
+  );
+});
+
+test("saving an online guide keeps the secondary disease plan", async () => {
+  const values = new Map();
+  const localStorage = {
+    getItem: (key) => values.get(key) || null,
+    setItem: (key, value) => values.set(key, value),
+  };
+  const window = {
+    TomatoInsightGroqClient: {
+      groqEnabled: () => true,
+      groqOnlyMode: () => false,
+      fetchCareRecommendation: async () => ({
+        ok: true,
+        groqUsed: true,
+        guide: {
+          diseaseName: "Healthy",
+          urgencyNote: "No other concerns.",
+          summary: "This leaf looks healthy.",
+          actionSteps: ["Keep monitoring."],
+          preventionTips: ["Check nearby plants."],
+        },
+      }),
+    },
+  };
+  const recs = recommendations({ window, localStorage });
+  const stored = await recs.captureForSave(
+    19,
+    { healthy: 31, tlcv: 0, early_blight: 0, spotted_wilt: 23 },
+    { severityLabel: "Healthy", severityPct: 0, severityAssessable: true }
+  );
+
+  assert.equal(stored.guides.length, 2);
+  assert.match(stored.guides[0].summary, /does not rule out the other model detection/i);
+  assert.equal(stored.guides[1].barKey, "spotted_wilt");
+  assert.match(stored.guides[1].preventionTips.join(" "), /thrips/i);
+});

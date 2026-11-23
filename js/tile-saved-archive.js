@@ -507,7 +507,7 @@
       const severity = String(highlight?.severity || "");
       treatmentBtn.textContent =
         top.barKey !== "healthy" && severity === "Severe"
-          ? "View urgent Severe care plan"
+          ? "View Intervention"
           : top.barKey !== "healthy" && severity === "Moderate"
             ? "View Moderate care plan"
             : top.barKey !== "healthy" && severity === "Mild"

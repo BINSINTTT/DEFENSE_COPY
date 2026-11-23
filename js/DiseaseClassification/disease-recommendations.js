@@ -95,10 +95,14 @@
           entryPctRaw != null && Number.isFinite(Number(entryPctRaw))
             ? Math.min(100, Math.max(0, Number(entryPctRaw)))
             : null;
+        const entryAreaPct =
+          entryAreaRaw != null && Number.isFinite(Number(entryAreaRaw))
+            ? Math.min(100, Math.max(0, Number(entryAreaRaw)))
+            : entryPct;
         diseaseSeverities[key] = {
           severityPct: entryPct,
           severityLabel: String(entry.severityLabel || entry.severity || "Unable to Assess"),
-          affectedAreaPct: entryPct,
+          affectedAreaPct: entryAreaPct,
           severityAssessable: Boolean(entry.severityAssessable ?? entry.measurable) && entryPct != null,
           severityReason: entry.severityReason || entry.reason || "",
           metric: entry.metric || "visual_symptom_extent",
@@ -162,6 +166,7 @@
         severityLabel: "Healthy",
         affectedAreaPct: area,
         severityAssessable: true,
+        diseaseSeverities: baseMeta?.diseaseSeverities || {},
       };
     }
     if (!meta) {
@@ -182,6 +187,7 @@
       affectedAreaPct: meta.affectedAreaPct ?? (areaKnown ? meta.severityPct : null),
       severityAssessable: label !== "Unable to Assess" && (Boolean(meta.severityAssessable) || areaKnown),
       severityReason: meta.severityReason || "",
+      diseaseSeverities: baseMeta?.diseaseSeverities || {},
     };
   }
 
@@ -469,7 +475,7 @@
     return detected[0] || null;
   }
 
-  /** Every score bar above 0% (diseases and healthy), highest first. */
+  /** Every returned detection above 0% (diseases and healthy), highest first. */
   function findDetectedMatches(scores) {
     if (!scores) return [];
     return BAR_KEYS.map((barKey) => ({
@@ -481,20 +487,28 @@
   }
 
   function guidesForScores(scores, severityInput) {
-    const top = findTopDisease(scores);
-    if (!top) return [];
-    const resolved = resolveSeverityMeta(scores, severityInput, top);
-    return [{
-      ...treatmentForBarKey(
-        top.barKey,
-        top.pct,
-        top.barKey === "healthy"
-          ? { ...resolved, severityLabel: resolved.severityLabel || "Healthy" }
-          : resolved
-      ),
-      barKey: top.barKey,
-      pct: top.pct,
-    }];
+    const baseMeta = normalizeSeverityMeta(severityInput) || lastSeverityMeta;
+    const matches = findDetectedMatches(scores);
+    const hasDiseaseMatch = matches.some((match) => match.barKey !== "healthy");
+    return matches.map((match, index) => {
+      const ownSeverity = baseMeta?.diseaseSeverities?.[match.barKey];
+      const severityForMatch = index === 0
+        ? resolveSeverityMeta(scores, severityInput, match)
+        : ownSeverity?.severityAssessable
+          ? ownSeverity
+          : { severityPct: null, affectedAreaPct: null, severityLabel: "Unable to Assess", severityAssessable: false };
+      const guide = {
+        ...treatmentForBarKey(match.barKey, match.pct, severityForMatch),
+        barKey: match.barKey,
+        pct: match.pct,
+        isSecondary: index > 0,
+      };
+      if (match.barKey === "healthy" && hasDiseaseMatch) {
+        guide.urgencyNote = "Review the possible disease detection below and continue monitoring.";
+        guide.summary = "Healthy tissue may be present, but this result does not rule out the other model detection. Check visible symptoms before acting.";
+      }
+      return guide;
+    });
   }
 
   function isHealthyGuide(guide) {
@@ -504,40 +518,33 @@
   }
 
   function mergeGuidesWithTopOverride(scores, topGuide, severityInput) {
-    const top = findTopDisease(scores);
-    if (!top) return [];
-    const resolved = resolveSeverityMeta(scores, severityInput, top);
-    const builtIn = {
-      ...treatmentForBarKey(
-        top.barKey,
-        top.pct,
-        top.barKey === "healthy"
-          ? { ...resolved, severityLabel: resolved.severityLabel || "Healthy" }
-          : resolved
-      ),
-      barKey: top.barKey,
-      pct: top.pct,
-    };
-    if (!topGuide || topGuide.error) return [builtIn];
-    return [{
+    const guides = guidesForScores(scores, severityInput);
+    const builtIn = guides[0];
+    if (!builtIn || !topGuide || topGuide.error) return guides;
+    const mergedTop = {
       ...builtIn,
       ...topGuide,
-      barKey: top.barKey,
-      pct: top.pct,
+      barKey: builtIn.barKey,
+      pct: builtIn.pct,
       diseaseName: topGuide.diseaseName || builtIn.diseaseName,
       severity: builtIn.severity,
       severityPct: builtIn.severityPct,
       affectedAreaPct: builtIn.affectedAreaPct,
       confidencePercent: builtIn.confidencePercent,
       recommendationBasis: "affected_area_severity",
-      ...(VIRAL_KEYS.has(top.barKey) ? {
+      ...(VIRAL_KEYS.has(builtIn.barKey) ? {
         urgencyNote: builtIn.urgencyNote,
         summary: builtIn.summary,
         actionSteps: builtIn.actionSteps,
         preventionTips: builtIn.preventionTips,
         isCriticalRemoval: builtIn.isCriticalRemoval,
       } : {}),
-    }];
+      ...(builtIn.barKey === "healthy" && guides.some((guide) => guide.barKey !== "healthy") ? {
+        urgencyNote: builtIn.urgencyNote,
+        summary: builtIn.summary,
+      } : {}),
+    };
+    return [mergedTop, ...guides.slice(1)];
   }
 
   function renderList(items, emptyMessage) {
@@ -561,22 +568,22 @@
     const isViral = VIRAL_KEYS.has(guide.barKey) || /(?:leaf\s*curl|spotted\s*wilt)/i.test(guide.diseaseName || "");
     const stepsTitle = isHealthy ? "What to do" : isViral ? "Management actions" : "Treatment steps";
     const severity = String(guide.severity || "").trim();
-    const eyebrow = isHealthy
+    const eyebrow = index > 0
+      ? `Additional model detection · ${fmtPct(guide.pct ?? guide.confidencePercent)}% confidence`
+      : isHealthy
       ? "Healthy care plan"
+      : severity === "Severe"
+        ? "Intervention"
       : severity && severity !== "Unable to Assess"
         ? `${severity} care plan`
         : "General care guidance · severity unavailable";
-    const urgencyClass = guide.isCriticalRemoval
-      ? "scan-treatment-panel__urgency scan-treatment-panel__urgency--critical"
-      : "scan-treatment-panel__urgency";
-
     return `
       <section class="scan-treatment-panel__disease"${index > 0 ? ' data-secondary="true"' : ""}>
         ${eyebrow ? `<p class="scan-treatment-panel__eyebrow">${escapeHtml(eyebrow)}</p>` : ""}
         <h4 class="scan-treatment-panel__title">${escapeHtml(
           guide.diseaseName || (isHealthy ? "Healthy" : "")
         )}</h4>
-        <p class="${urgencyClass}">${escapeHtml(guide.urgencyNote)}</p>
+        ${index > 0 ? `<p class="scan-treatment-panel__summary">This is another model detection, not a confirmed second diagnosis.${severity === "Unable to Assess" ? " Its severity was not assessed." : ""} Check this leaf and nearby plants before acting.</p>` : ""}
         <p class="scan-treatment-panel__summary">${escapeHtml(guide.summary)}</p>
         <h5 class="scan-treatment-panel__subtitle">${stepsTitle}</h5>
         ${renderList(guide.actionSteps, "No steps listed.")}
@@ -857,7 +864,16 @@
     const areaRaw = resolved?.affectedAreaPct ?? resolved?.severityPct;
     const area = areaRaw == null ? NaN : Number(areaRaw);
     const areaKey = Number.isFinite(area) && area >= 0 ? String(Math.round(area * 10) / 10) : "na";
-    return `management-v1|${scoresKey(scores)}|severity:${severity}|affected:${areaKey}`;
+    const additionalSeverity = findDetectedMatches(scores)
+      .slice(1)
+      .map(({ barKey }) => {
+        const meta = resolved?.diseaseSeverities?.[barKey];
+        const pct = meta?.affectedAreaPct ?? meta?.severityPct;
+        const area = pct != null && Number.isFinite(Number(pct)) ? Math.round(Number(pct) * 10) / 10 : "na";
+        return `${barKey}:${meta?.severityAssessable ? `${meta.severityLabel}:${area}` : "na"}`;
+      })
+      .join("|");
+    return `multi-guides-v2|${scoresKey(scores)}|severity:${severity}|affected:${areaKey}|additional:${additionalSeverity}`;
   }
 
   function stillShowing(key, tile) {
@@ -962,7 +978,7 @@
     const resolved = resolveSeverityMeta(lastScores, lastSeverityMeta ?? lastSeverityPct, top);
     const severity = String(resolved?.severityLabel || "");
     if (enabled && top?.barKey !== "healthy" && severity === "Severe") {
-      btn.textContent = "View urgent Severe care plan";
+      btn.textContent = "View Intervention";
     } else if (enabled && top?.barKey !== "healthy" && severity === "Moderate") {
       btn.textContent = "View Moderate care plan";
     } else if (enabled && top?.barKey !== "healthy" && severity === "Mild") {
