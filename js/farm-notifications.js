@@ -5,6 +5,14 @@
   if (!storage || !archive) return;
 
   const CONFIRMED_KEY = "tomatoInsight.scanReminderConfirmed";
+  const floatingPopup = document.createElement("div");
+  floatingPopup.className = "farm-tile__notify-popup";
+  floatingPopup.hidden = true;
+  floatingPopup.setAttribute("role", "dialog");
+  floatingPopup.setAttribute("aria-modal", "false");
+  document.body.appendChild(floatingPopup);
+  let activeButton = null;
+  let activeTileNum = null;
 
   function readConfirmed() {
     try {
@@ -88,10 +96,11 @@
   }
 
   function closeAllTilePopups() {
-    document.querySelectorAll(".farm-tile__notify-popup").forEach((popup) => {
-      popup.hidden = true;
-      popup.innerHTML = "";
-    });
+    floatingPopup.hidden = true;
+    floatingPopup.innerHTML = "";
+    floatingPopup.style.visibility = "";
+    activeButton = null;
+    activeTileNum = null;
     document.querySelectorAll(".farm-tile__notify").forEach((btn) => {
       btn.setAttribute("aria-expanded", "false");
     });
@@ -142,6 +151,31 @@
     });
   }
 
+  function positionFloatingPopup() {
+    if (floatingPopup.hidden || !activeButton?.isConnected) return;
+    const anchor = activeButton.getBoundingClientRect();
+    if (
+      anchor.bottom < 0 || anchor.top > window.innerHeight ||
+      anchor.right < 0 || anchor.left > window.innerWidth
+    ) {
+      closeAllTilePopups();
+      return;
+    }
+    const margin = 12;
+    const gap = 12;
+    const width = floatingPopup.offsetWidth;
+    const height = floatingPopup.offsetHeight;
+    const left = Math.max(
+      margin,
+      Math.min(anchor.left + anchor.width / 2 - width / 2, window.innerWidth - width - margin)
+    );
+    let top = anchor.top - height - gap;
+    if (top < margin) top = anchor.bottom + gap;
+    top = Math.max(margin, Math.min(top, window.innerHeight - height - margin));
+    floatingPopup.style.left = `${left}px`;
+    floatingPopup.style.top = `${top}px`;
+  }
+
   function syncTiles() {
     const map = messagesByTile();
     document.querySelectorAll(".farm-tile__notify").forEach((btn) => {
@@ -163,21 +197,30 @@
           ? `Notifications for ${label}, ${noticeCount} ${noticeCount === 1 ? "notification" : "notifications"}`
           : `Notifications for ${label}, no notifications`
       );
-      const popup = btn.closest(".farm-tile-cell")?.querySelector(".farm-tile__notify-popup");
-      if (popup && !popup.hidden) renderTilePopup(popup, tileNum, messages);
     });
+    if (activeButton?.isConnected && activeTileNum != null) {
+      renderTilePopup(floatingPopup, activeTileNum, map.get(activeTileNum) || []);
+      positionFloatingPopup();
+    } else if (activeButton) {
+      closeAllTilePopups();
+    }
   }
 
   function toggleTilePopup(tileNum, button) {
     const cell = button.closest(".farm-tile-cell");
-    const popup = cell?.querySelector(".farm-tile__notify-popup");
-    if (!popup) return;
-    const willOpen = popup.hidden;
+    if (!cell) return;
+    const willOpen = floatingPopup.hidden || activeButton !== button;
     closeAllTilePopups();
     if (!willOpen) return;
     const messages = messagesByTile().get(Number(tileNum)) || [];
-    renderTilePopup(popup, Number(tileNum), messages);
-    popup.hidden = false;
+    activeButton = button;
+    activeTileNum = Number(tileNum);
+    renderTilePopup(floatingPopup, activeTileNum, messages);
+    floatingPopup.setAttribute("aria-label", `Notifications for ${tileLabel(activeTileNum)}`);
+    floatingPopup.style.visibility = "hidden";
+    floatingPopup.hidden = false;
+    positionFloatingPopup();
+    floatingPopup.style.visibility = "";
     button.setAttribute("aria-expanded", "true");
     cell.classList.add("farm-tile-cell--notify-open");
   }
@@ -198,6 +241,9 @@
     if (event.key !== "Escape") return;
     closeAllTilePopups();
   });
+
+  window.addEventListener("resize", positionFloatingPopup);
+  document.addEventListener("scroll", positionFloatingPopup, true);
 
   window.TomatoInsightNotifications = { syncTiles, toggleTilePopup };
 

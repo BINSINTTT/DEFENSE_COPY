@@ -874,15 +874,15 @@
 }
 
 .farm-tile__notify-popup {
-  position: absolute;
-  top: 3.3rem;
-  left: 0;
-  z-index: 6;
+  position: fixed;
+  z-index: 1000;
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 16.5rem;
-  max-width: min(16.5rem, 78vw);
+  box-sizing: border-box;
+  width: min(16.5rem, calc(100vw - 1.5rem));
+  max-height: calc(100dvh - 1.5rem);
+  overflow-y: auto;
   padding: 1.35rem 1.2rem 1.2rem;
   border: 1px solid rgba(155, 43, 38, 0.16);
   border-radius: 1.75rem;
