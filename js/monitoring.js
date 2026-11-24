@@ -287,7 +287,35 @@
     const highlight = highlightTemplate.content.cloneNode(true);
     window.TomatoInsightRecommendations.renderScanHighlight(highlight, scores, scan);
     article.append(head, frame, highlight, classTitle, list);
+    article.appendChild(interventionPanel(info, week, scan, scores));
     scansEl.appendChild(article);
+  }
+
+  function interventionPanel(info, week, scan, scores) {
+    const recs = window.TomatoInsightRecommendations;
+    const key = recs.recommendationKeyFor(scores, scan);
+    let saved = scan.intervention;
+    if (!saved && archive.canonicalWeekNumber(info.weekNumber) === week) {
+      saved = recs.storedForTile(selectedTile);
+    }
+    const matches = saved && saved.recommendationKey === key;
+    const guides = matches ? recs.guidesFromStored(saved, scores, scan) : recs.guidesForScores(scores, scan);
+    const panel = document.createElement("details");
+    panel.className = "scan-treatment-panel monitor-intervention";
+    panel.open = true;
+    const heading = document.createElement("summary");
+    heading.textContent = "Intervention";
+    panel.appendChild(heading);
+    if (!matches) {
+      const note = document.createElement("p");
+      note.className = "scan-treatment-panel__summary";
+      note.textContent = guides.length
+        ? "Care guidance based on this week’s saved scan."
+        : "No intervention is available for this scan.";
+      panel.appendChild(note);
+    }
+    panel.insertAdjacentHTML("beforeend", recs.renderGuidesHtml(guides));
+    return panel;
   }
 
   function renderScans(info, pair) {

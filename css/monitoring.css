@@ -537,6 +537,20 @@ body.page-monitoring .page-panel {
   grid-template-columns: repeat(auto-fit, minmax(min(8rem, 100%), 1fr));
 }
 
+.monitor-intervention {
+  overflow-wrap: anywhere;
+}
+
+.monitor-intervention > summary {
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.monitor-intervention[open] > summary {
+  margin-bottom: 0.65rem;
+}
+
 .monitor-scan__class-title {
   margin: 0 0 0.55rem;
   font-size: 0.6875rem;

@@ -158,6 +158,7 @@
             : Math.min(100, Math.max(0, Number(info.affectedAreaPct))),
         severityAssessable: Boolean(info.severityAssessable),
         diseaseSeverities: info.diseaseSeverities,
+        intervention: info.intervention || null,
       };
     }
     return map;
@@ -650,6 +651,7 @@
     filterTiles,
     FARM_WEEK_FIRST,
     FARM_WEEK_LAST,
+    canonicalWeekNumber,
     getSelectedFarmWeek,
     weekForNextSave,
     setSelectedFarmWeek,

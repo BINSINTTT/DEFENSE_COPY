@@ -58,6 +58,7 @@
       rescanRecommended: Boolean(info.rescanRecommended),
       severityModel: info.severityModel || null,
       imageDataUrl: info.imageDataUrl || null,
+      intervention: info.intervention || null,
     };
   }
 
