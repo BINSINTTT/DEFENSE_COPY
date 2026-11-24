@@ -532,6 +532,11 @@ body.page-monitoring .page-panel {
   color: var(--text-secondary);
 }
 
+.monitor-scan .scan-highlight__metrics {
+  margin: 0;
+  grid-template-columns: repeat(auto-fit, minmax(min(8rem, 100%), 1fr));
+}
+
 .monitor-scan__class-title {
   margin: 0 0 0.55rem;
   font-size: 0.6875rem;

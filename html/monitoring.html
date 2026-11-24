@@ -23,6 +23,7 @@
     />
     <link rel="stylesheet" href="../css/base.css" />
     <link rel="stylesheet" href="../css/page-layout.css" />
+    <link rel="stylesheet" href="../css/scan-archive.css" />
     <link rel="stylesheet" href="../css/monitoring.css" />
   </head>
   <body class="page-monitoring">
@@ -178,6 +179,20 @@
               </div>
 
               <section class="monitor-scans" id="monitor-scans" aria-label="Scan results"></section>
+              <template id="monitor-scan-highlight">
+                <div class="scan-highlight">
+                  <dl class="scan-highlight__metrics">
+                    <div class="scan-highlight__metric">
+                      <dt class="scan-highlight__metric-label">Detected Disease</dt>
+                      <dd class="scan-highlight__metric-value scan-highlight__metric-value--disease" data-scan-detected-disease></dd>
+                    </div>
+                    <div class="scan-highlight__metric">
+                      <dt class="scan-highlight__metric-label">Symptom Severity</dt>
+                      <dd class="scan-highlight__metric-value" data-scan-symptom-severity></dd>
+                    </div>
+                  </dl>
+                </div>
+              </template>
             </div>
           </main>
         </div>
@@ -187,6 +202,7 @@
     <script src="../js/tile-plant-storage.js"></script>
     <script src="../js/tile-plant-names.js"></script>
     <script src="../js/tile-saved-archive.js"></script>
+    <script src="../js/DiseaseClassification/disease-recommendations.js"></script>
     <script src="../js/app-page-load.js"></script>
     <script src="../js/monitoring.js"></script>
     <script src="../js/sidebar-toggle.js"></script>

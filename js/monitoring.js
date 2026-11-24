@@ -26,6 +26,7 @@
   const weekList = document.getElementById("monitor-week-list");
   const weekCaption = document.getElementById("monitor-weeks-caption");
   const scansEl = document.getElementById("monitor-scans");
+  const highlightTemplate = document.getElementById("monitor-scan-highlight");
 
   const RESULT_ROWS = [
     { key: "healthy", label: "Healthy", fill: "healthy" },
@@ -256,8 +257,10 @@
 
     const list = document.createElement("ul");
     list.className = "monitor-scan__list";
+    const scores = {};
     RESULT_ROWS.forEach(({ key, label, fill }) => {
       const pct = scoreOf(scan, key);
+      scores[key] = pct;
       const row = document.createElement("li");
       row.className = "monitor-scan__row";
       const name = document.createElement("span");
@@ -281,7 +284,9 @@
       list.appendChild(row);
     });
 
-    article.append(head, frame, classTitle, list);
+    const highlight = highlightTemplate.content.cloneNode(true);
+    window.TomatoInsightRecommendations.renderScanHighlight(highlight, scores, scan);
+    article.append(head, frame, highlight, classTitle, list);
     scansEl.appendChild(article);
   }
 
@@ -326,9 +331,9 @@
       setText(pastLabel, `Week ${pair.pastWeek}`);
       setText(currentLabel, `Week ${pair.currentWeek}`);
       setText(firstValue, resultText(pair.pastSummary));
-      setText(firstHint, `${archive.fmtPct(pair.pastSummary.pct)}% · previous scan`);
+      setText(firstHint, pair.pastSummary ? `${archive.fmtPct(pair.pastSummary.pct)}% · previous scan` : "No classification saved");
       setText(latestValue, resultText(pair.currentSummary));
-      setText(latestHint, `${archive.fmtPct(pair.currentSummary.pct)}% · chosen week`);
+      setText(latestHint, pair.currentSummary ? `${archive.fmtPct(pair.currentSummary.pct)}% · chosen week` : "No classification saved");
       setText(changeHint, `Week ${pair.pastWeek} vs Week ${pair.currentWeek}`);
     } else if (pair?.currentWeek) {
       setText(pastLabel, "Past week");
@@ -336,7 +341,7 @@
       setText(firstValue, "—");
       setText(firstHint, "No earlier scan");
       setText(latestValue, resultText(pair.currentSummary));
-      setText(latestHint, `${archive.fmtPct(pair.currentSummary.pct)}% · first scan`);
+      setText(latestHint, pair.currentSummary ? `${archive.fmtPct(pair.currentSummary.pct)}% · first scan` : "No classification saved");
       setText(changeHint, "This is the first scan");
     } else {
       setText(pastLabel, "Past week");

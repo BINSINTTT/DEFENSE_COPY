@@ -157,6 +157,7 @@
             ? null
             : Math.min(100, Math.max(0, Number(info.affectedAreaPct))),
         severityAssessable: Boolean(info.severityAssessable),
+        diseaseSeverities: info.diseaseSeverities,
       };
     }
     return map;
